@@ -44,16 +44,25 @@ opt.clipboard = ""
 opt.shadafile = "NONE" -- 启动时不读 shada，等第一次进命令行再手动加载
 
 -- ===== 滚动留白 =====
--- 固定 10 行，不用按初始窗口高度算：分屏后窗口变矮，动态值会占掉半个屏幕
-opt.scrolloff = 10
-opt.sidescrolloff = 8
+-- 光标始终保持在当前窗口正中
+-- 按窗口实际尺寸算，分屏后重新计算，不会占掉半个屏幕
+local function center_cursor()
+    vim.o.scrolloff = math.floor((vim.fn.winheight(0) - 1) / 2)
+    vim.o.sidescrolloff = math.floor((vim.fn.winwidth(0) - 1) / 2)
+end
+
+center_cursor()
+
+vim.api.nvim_create_autocmd({ "WinResized", "WinEnter", "VimResized" }, {
+    callback = center_cursor,
+})
 
 -- ===== 分屏保持视口 =====
 -- 开关分屏时屏幕内容不跳动
 opt.splitkeep = "screen"
 
 -- ===== 命令行区域 =====
-opt.cmdheight = 0 -- 0 = 底部不留空行，命令行交给 noice 浮窗
+opt.cmdheight = 1 -- 0 = 底部不留空行，命令行交给 noice 浮窗
 opt.cmdwinheight = 1 -- q: 打开的命令行窗口高度
 
 -- ===== 分屏方向 =====

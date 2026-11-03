@@ -27,19 +27,34 @@ local function hover()
     local params = vim.lsp.util.make_position_params(0, "utf-8") -- 光标位置参数
     local origin = vim.api.nvim_get_current_win()                -- 记下原窗口，关闭后回去
 
-    vim.lsp.buf_request(buf, "textDocument/hover", params, function(err, result, ctx)
+    vim.lsp.buf_request(buf, "textDocument/hover", params, function(err, result, _)
         if err or not result or vim.tbl_isempty(result) then
             return -- 没有内容就不开窗
         end
 
-        local ok, fb, win = pcall(vim.lsp.handlers.hover, nil, result, ctx, {
+        -- 自己渲染浮窗：vim.lsp.handlers.hover 在 0.12 已标记废弃
+        local lines = vim.lsp.util.convert_input_to_markdown_lines(result.contents)
+
+        -- 去掉首尾空行
+        -- 官方推荐 vim.split + trimempty，但那个会连中间的代码块空行一起删掉
+        -- vim.lsp.util.trim_empty_lines 已废弃，这里自己实现同样的首尾裁剪
+        while #lines > 0 and vim.trim(lines[1]) == "" do
+            table.remove(lines, 1)
+        end
+        while #lines > 0 and vim.trim(lines[#lines]) == "" do
+            table.remove(lines)
+        end
+
+        if #lines == 0 then
+            return
+        end
+
+        local fb, win = vim.lsp.util.open_floating_preview(lines, "markdown", {
             border = "rounded",
             max_height = math.max(6, math.floor(vim.o.lines * 0.6)), -- 最高屏幕的 60%
             focusable = true,                                        -- 允许聚焦
-            focus_id = "hover",                                      -- 同 id 的浮窗复用
-            close_events = { "InsertEnter" },                        -- 进插入模式时自动关
         })
-        if not (ok and win and fb) then
+        if not win then
             return
         end
 
@@ -92,5 +107,12 @@ vim.api.nvim_create_autocmd("LspAttach", {
         map("n", "]d", function()
             vim.diagnostic.jump({ count = 1 })
         end, opts("下一个诊断"))
+        -- 只在错误之间跳，不被警告干扰
+        map("n", "[e", function()
+            vim.diagnostic.jump({ count = -1, severity = vim.diagnostic.severity.ERROR })
+        end, opts("上一个错误"))
+        map("n", "]e", function()
+            vim.diagnostic.jump({ count = 1, severity = vim.diagnostic.severity.ERROR })
+        end, opts("下一个错误"))
     end,
 })
