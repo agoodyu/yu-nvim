@@ -12,6 +12,8 @@
 ├── init.lua                       入口，只 require core.init
 ├── lazy-lock.json                 插件版本锁定，跨机器复制时必须一起带上
 ├── README.md                      本文件
+├── .stylua.toml                   Lua 格式化规则（stylua 和编辑器共用）
+├── .gitignore
 ├── scripts/
 │   └── bootstrap.fish             新机器一键安装外部依赖
 ├── after/ftplugin/
@@ -39,7 +41,9 @@
         │   ├── noice.lua          命令行浮窗
         │   ├── which-key.lua      按键提示
         │   ├── indent-blankline.lua 缩进参考线
-        │   └── scrolleof.lua      文件末尾滚动余量
+        │   ├── scrolleof.lua      文件末尾滚动余量
+        │   ├── render-markdown.lua Markdown 实时渲染
+        │   └── snacks.lua          图片显示（只开 image 模块）
         │
         ├── editor/                编辑增强
         │   ├── hop.lua            定点跳转
@@ -64,7 +68,8 @@
         │   └── crates.lua         Cargo.toml 增强
         │
         └── tools/
-            └── translator.lua     翻译（bing 引擎）
+            ├── translator.lua     翻译（bing 引擎）
+            └── live-preview.lua  浏览器预览（保存时刷新）
 ```
 
 ### 为什么这样分层

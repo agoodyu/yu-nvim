@@ -14,4 +14,5 @@ return {
     { bin = "rustfmt", pkg = "rustup component add rustfmt" },
     { bin = "tree-sitter", pkg = "tree-sitter-cli" },
     { bin = "node", pkg = "nodejs" },
+    { bin = "codelldb", pkg = "codelldb-bin (AUR)" },
 }
