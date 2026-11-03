@@ -25,8 +25,12 @@ return {
                 vim.keymap.set("n", lhs, rhs, { buffer = bufnr, desc = desc })
             end
 
-            map("]h", gs.next_hunk, "下一个改动")     -- 跳到下一个 hunk
-            map("[h", gs.prev_hunk, "上一个改动")     -- 跳到上一个 hunk
+            map("]h", function()
+                gs.nav_hunk("next")   -- next_hunk / prev_hunk 已废弃
+            end, "下一个改动")
+            map("[h", function()
+                gs.nav_hunk("prev")
+            end, "上一个改动")
             map("<leader>gp", gs.preview_hunk, "预览改动")
             map("<leader>gs", gs.stage_hunk, "暂存改动")
             map("<leader>gr", gs.reset_hunk, "撤销改动")
