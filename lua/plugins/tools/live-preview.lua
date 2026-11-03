@@ -50,6 +50,14 @@ return {
         { "<leader>mP", "<cmd>LivePreview stop<cr>", desc = "关闭浏览器预览" },
     },
     config = function()
+        require("livepreview.config").set({
+            -- 明确指定用内置的 vim.ui.select，不要让它自动挑 snacks.picker
+            -- snacks.picker 一旦被 setup 就会接管 vim.ui.select，
+            -- 之后所有 LSP 的选择菜单（包括代码操作）都变成 snacks 的样式，
+            -- 会出现只有 provider 名字、看不出内容的条目
+            picker = "vim.ui.select",
+        })
+
         -- 保存文件时才推送更新
         vim.api.nvim_create_autocmd("BufWritePost", {
             callback = function()

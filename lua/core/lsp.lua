@@ -96,8 +96,20 @@ vim.api.nvim_create_autocmd("LspAttach", {
 
         -- 编辑
         map("n", "<leader>rn", vim.lsp.buf.rename, opts("重命名符号"))
-        map("n", "<leader>ca", vim.lsp.buf.code_action, opts("代码操作"))
-        map("x", "<leader>ca", vim.lsp.buf.code_action, opts("代码操作"))
+
+        -- 代码操作：过滤掉没有标题的条目
+        -- 有些服务器只给 provider 名字（比如 basedpyright），
+        -- 这种条目在菜单里完全看不出能干什么，不如不显示
+        local function code_action()
+            vim.lsp.buf.code_action({
+                filter = function(action)
+                    return type(action.title) == "string" and action.title ~= ""
+                end,
+            })
+        end
+
+        map("n", "<leader>ca", code_action, opts("代码操作"))
+        map("x", "<leader>ca", code_action, opts("代码操作"))
 
         -- 诊断
         map("n", "<leader>dd", vim.diagnostic.open_float, opts("查看诊断"))
