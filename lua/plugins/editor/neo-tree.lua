@@ -79,8 +79,9 @@ return {
         local function set_transparent()
             for _, name in ipairs({ "NeoTreeNormal", "NeoTreeNormalNC" }) do
                 local hl = vim.api.nvim_get_hl(0, { name = name, link = false })
-                hl.bg = nil
-                vim.api.nvim_set_hl(0, name, hl)
+                -- 只回填前景色，背景不设即为透明
+                -- （get_hl 返回的是只读的 keyset.get，不能整个传给 set_hl）
+                vim.api.nvim_set_hl(0, name, { fg = hl.fg, bg = "none" })
             end
         end
 
