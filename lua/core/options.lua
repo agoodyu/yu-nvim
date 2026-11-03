@@ -7,8 +7,11 @@ local opt = vim.opt
 local g = vim.g
 
 -- ===== 界面语言 =====
--- 目标机没有中文 locale 时 pcall 会静默失败，不会中断后面的加载
-pcall(vim.cmd, "language zh_CN.UTF-8")
+-- 目标机没有中文 locale 时静默失败，不会中断后面的加载
+-- 用闭包包一层：vim.cmd 是带 __call 的 table，直接传给 pcall 类型上不匹配
+pcall(function()
+    vim.cmd("language zh_CN.UTF-8")
+end)
 
 -- ===== 按键超时 =====
 -- 组合键等待时间（毫秒），jj、<leader>zz 这类序列映射靠它判断输入是否结束
