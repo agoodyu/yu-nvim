@@ -15,7 +15,8 @@
 ├── .stylua.toml                   Lua 格式化规则（stylua 和编辑器共用）
 ├── .gitignore
 ├── scripts/
-│   └── bootstrap.fish             新机器一键安装外部依赖
+│   ├── bootstrap.fish             新机器一键安装外部依赖
+│   └── push.sh                    日常一键格式化 + 提交 + 推送
 ├── after/ftplugin/
 │   └── rust.lua                   Rust 专用键位，只在 rust 缓冲区生效
 └── lua/
@@ -410,6 +411,32 @@ git add -A && git commit -m "..." && git push
 ## 版本管理
 
 配置用 git tag 标记版本，GitHub 上可以看到每个版本的变更说明。
+
+### 日常更新：一键脚本
+
+改完配置后跑一条命令就行：
+
+```fish
+~/.config/nvim/scripts/push.sh "提交说明"
+```
+
+它会自动：按 `.stylua.toml` 格式化 → 列出改动 → 提交 → 推送。
+
+带版本号参数则额外打标签并创建 Release：
+
+```fish
+~/.config/nvim/scripts/push.sh "加了个新插件" v1.1.0
+```
+
+### 手动流程
+
+脚本做的事，手动来就是这三步：
+
+```bash
+cd ~/.config/nvim
+stylua .                                    # 统一格式
+git add -A && git commit -m "..." && git push
+```
 
 ### 打一个新版本
 
