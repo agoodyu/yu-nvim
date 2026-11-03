@@ -4,12 +4,12 @@
 -- 只有打开 lua 文件才加载，不影响日常编辑
 -- ============================================================================
 return {
-	"folke/lazydev.nvim",
-	ft = "lua",
-	opts = {
-		library = {
-			-- 文件里出现 vim.uv 时才加载 luv 类型定义
-			{ path = "${3rd}/luv/library", words = { "vim%.uv" } },
-		},
-	},
+    "folke/lazydev.nvim",
+    ft = "lua",
+    opts = {
+        library = {
+            -- 文件里出现 vim.uv 时才加载 luv 类型定义
+            { path = "${3rd}/luv/library", words = { "vim%.uv" } },
+        },
+    },
 }

@@ -10,7 +10,7 @@ local g = vim.g
 -- 目标机没有中文 locale 时静默失败，不会中断后面的加载
 -- 用闭包包一层：vim.cmd 是带 __call 的 table，直接传给 pcall 类型上不匹配
 pcall(function()
-	vim.cmd("language zh_CN.UTF-8")
+    vim.cmd("language zh_CN.UTF-8")
 end)
 
 -- ===== 按键超时 =====
@@ -50,14 +50,14 @@ opt.shadafile = "NONE" -- 启动时不读 shada，等第一次进命令行再手
 -- 光标始终保持在当前窗口正中
 -- 按窗口实际尺寸算，分屏后重新计算，不会占掉半个屏幕
 local function center_cursor()
-	vim.o.scrolloff = math.floor((vim.fn.winheight(0) - 1) / 2)
-	vim.o.sidescrolloff = math.floor((vim.fn.winwidth(0) - 1) / 2)
+    vim.o.scrolloff = math.floor((vim.fn.winheight(0) - 1) / 2)
+    vim.o.sidescrolloff = math.floor((vim.fn.winwidth(0) - 1) / 2)
 end
 
 center_cursor()
 
 vim.api.nvim_create_autocmd({ "WinResized", "WinEnter", "VimResized" }, {
-	callback = center_cursor,
+    callback = center_cursor,
 })
 
 -- ===== 分屏保持视口 =====

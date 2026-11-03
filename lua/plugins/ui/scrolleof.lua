@@ -3,9 +3,9 @@
 -- 让最后一行也能滚到屏幕中间，而不是贴底
 -- ============================================================================
 return {
-	"Aasim-A/scrollEOF.nvim",
-	event = { "CursorMoved", "WinScrolled" },
-	opts = {
-		insert_mode = true, -- 插入模式下也生效
-	},
+    "Aasim-A/scrollEOF.nvim",
+    event = { "CursorMoved", "WinScrolled" },
+    opts = {
+        insert_mode = true, -- 插入模式下也生效
+    },
 }
