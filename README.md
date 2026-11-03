@@ -404,3 +404,53 @@ git add -A && git commit -m "..." && git push
 ```
 
 `lazy-lock.json` 要一起提交，它锁定了 34 个插件的具体版本。
+
+---
+
+## 版本管理
+
+配置用 git tag 标记版本，GitHub 上可以看到每个版本的变更说明。
+
+### 打一个新版本
+
+```bash
+cd ~/.config/nvim
+
+# 1. 先把改动提交推送
+git add -A && git commit -m "..." && git push
+
+# 2. 打标签
+git tag -a v1.1.0 -m "v1.1.0 说明"
+git push origin v1.1.0
+
+# 3. 创建 Release，--generate-notes 根据提交记录自动生成更新日志
+gh release create v1.1.0 --title "v1.1.0" --generate-notes
+```
+
+需要 `gh` 命令行工具并完成登录：
+
+```fish
+sudo pacman -S github-cli
+gh auth login
+gh auth setup-git
+```
+
+### 当前版本
+
+| 版本 | 说明 |
+| --- | --- |
+| [v1.0.0](https://github.com/agoodyu/yu-nvim/releases/tag/v1.0.0) | 初始版本 |
+
+### 用指定版本部署
+
+```bash
+git clone --branch v1.0.0 https://github.com/agoodyu/yu-nvim.git ~/.config/nvim
+```
+
+### 语义化版本约定
+
+| 改动类型 | 版本号 | 说明 |
+| --- | --- | --- |
+| 破坏性改动 | `v2.0.0` | 键位重排、配置结构调整，别人升级会不适应 |
+| 新增功能 | `v1.1.0` | 加插件、加键位，不影响现有使用 |
+| 修复 bug | `v1.0.1` | 只改行为，不加新东西 |
