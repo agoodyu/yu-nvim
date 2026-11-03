@@ -17,7 +17,11 @@ return {
                         check = { command = "clippy" }, -- 保存时用 clippy 检查而不是 cargo check
                         procMacro = { enable = true }, -- 展开过程宏，跳转能进宏内部
                         inlayHints = {
+                            typeHints = { enable = true }, -- 变量、字段的推断类型
+                            parameterHints = { enable = true }, -- 调用时的形参名
+                            chainingHints = { enable = true }, -- 链式调用每一步的中间类型
                             closureReturnTypeHints = { enable = "always" }, -- 显示闭包返回类型
+                            maxLength = 25, -- 类型太长就截断，避免把一行撑爆
                         },
                     },
                 },

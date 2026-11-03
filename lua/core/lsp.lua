@@ -15,6 +15,9 @@ vim.diagnostic.config({
     jump = { float = true }, -- ]d / [d 跳转时用浮窗预览
 })
 
+-- 类型提示的全局开关，LspAttach 和新开的缓冲区都读它
+vim.g.inlay_hints = true
+
 local map = vim.keymap.set
 
 -- ===== hover 浮窗 =====
@@ -110,6 +113,44 @@ vim.api.nvim_create_autocmd("LspAttach", {
 
         map("n", "<leader>ca", code_action, opts("代码操作"))
         map("x", "<leader>ca", code_action, opts("代码操作"))
+
+        -- 类型内联提示：变量 / 参数后面直接显示推断出来的类型
+        -- 只有服务器支持才开，不支持时 enable 是空操作，键位也别占位置
+        local client = vim.lsp.get_client_by_id(ev.data.client_id)
+        if client and client:supports_method("textDocument/inlayHint") then
+            if vim.g.inlay_hints then
+                vim.lsp.inlay_hint.enable(true, { bufnr = ev.buf })
+            end
+
+            -- 插入模式下隐藏、离开后恢复：每敲一个字符服务器都要重算一遍提示，
+            -- 一边打字一边刷新会卡，而且提示跳来跳去很干扰
+            local group = vim.api.nvim_create_augroup("InlayHints" .. ev.buf, { clear = true })
+            vim.api.nvim_create_autocmd("InsertEnter", {
+                group = group,
+                buffer = ev.buf,
+                callback = function()
+                    vim.lsp.inlay_hint.enable(false, { bufnr = ev.buf })
+                end,
+            })
+            vim.api.nvim_create_autocmd("InsertLeave", {
+                group = group,
+                buffer = ev.buf,
+                callback = function()
+                    if vim.g.inlay_hints then
+                        vim.lsp.inlay_hint.enable(true, { bufnr = ev.buf })
+                    end
+                end,
+            })
+
+            -- 全局开关：切换后所有缓冲区一起生效，新开的文件也遵守
+            map("n", "<leader>ih", function()
+                vim.g.inlay_hints = not vim.g.inlay_hints
+                vim.lsp.inlay_hint.enable(vim.g.inlay_hints)
+                vim.notify(
+                    vim.g.inlay_hints and "类型提示：已开启" or "类型提示：已关闭"
+                )
+            end, opts("类型提示开关"))
+        end
 
         -- 诊断
         map("n", "<leader>dd", vim.diagnostic.open_float, opts("查看诊断"))

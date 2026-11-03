@@ -21,7 +21,14 @@ return {
         vim.lsp.config("basedpyright", {
             settings = {
                 basedpyright = {
-                    analysis = { typeCheckingMode = "standard" }, -- 类型检查强度
+                    analysis = {
+                        typeCheckingMode = "standard", -- 类型检查强度
+                        inlayHints = {
+                            variableTypes = true, -- 变量名后面显示推断类型
+                            callArgumentNames = true, -- 调用参数显示形参名
+                            functionReturnTypes = true, -- 函数签名显示返回类型
+                        },
+                    },
                 },
             },
         })
