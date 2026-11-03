@@ -263,16 +263,17 @@
 
 ### 启动耗时
 
-约 11ms（`nvim --startuptime` 实测）。只有两个插件在启动路径上：
+约 12ms（`nvim --startuptime` 实测）。只有三个插件在启动路径上：
 
 - `tokyonight`：配色必须在启动时应用
 - `rustaceanvim`：官方要求 `lazy = false`，改成懒加载会破坏 filetype 初始化
+- `nvim-treesitter`：官方要求 `lazy = false`，但真正的 parser 安装推迟到了 `VeryLazy` 之后
 
-`nvim-treesitter` 虽然也是 `lazy = false`，但真正的 parser 安装推迟到了 `VeryLazy` 之后。
+其余 31 个插件全部懒加载，不影响启动。
 
 ### 首次启动很慢
 
-新机器第一次打开会：克隆 20+ 个插件、编译 17 个 treesitter parser。屏幕可能卡几分钟，这是正常的。之后每次 11ms。
+新机器第一次打开会：克隆 34 个插件、编译 17 个 treesitter parser。屏幕可能卡几分钟，这是正常的。之后每次 12ms。
 
 ### `cmdheight = 0`
 
@@ -298,11 +299,25 @@
 
 `o` 被映射为打开文件，占用了原本的排序前缀（`oc`/`od`/...）。排序功能整体挪到了 `O` + 字母。树打开时会自动删掉 `o` 前缀的子映射，否则每次按 `o` 都要等 `timeoutlen` 才能确定意图。
 
-### 浏览器预览是保存触发
+### 浏览器预览
 
 live-preview 默认边打字边刷新。配置里删掉了它的 `TextChanged` 自动命令，改成 `BufWritePost` 手动推送，所以**只有保存才会更新浏览器**。
 
 必须用 `空格 m p` 启动——直接在命令行敲 `:LivePreview start` 不会执行清理逻辑，仍然是打字即刷新。
+
+live-preview 没提供这个配置项，只能自己实现，因此依赖 `livepreview.server.connecting_clients` 和 `websocket.send_json` 这两个内部 API，插件大版本升级后可能需要跟着调整。相关调用都包了 `pcall`，真失效只会静默跳过，不会报错。
+
+### 代码格式由 stylua 统一
+
+`.stylua.toml` 定义了全部 Lua 代码的格式：4 空格缩进、单行不超过 100 列、字符串优先双引号。
+
+这份配置同时作用于两个地方——命令行 `stylua .` 和编辑器里的 `conform.nvim`（保存 `.lua` 文件时自动调用 stylua），所以两边不会打架。
+
+改完配置后编辑器里可能会提示"文件已更改"（磁盘上已是新格式，buffer 里还是旧的），执行 `:checktime` 或 `:e!` 重新加载一次即可。
+
+### lazy 的 luarocks 提示可以忽略
+
+`:checkhealth lazy` 会提示没装 luarocks、无法安装需要 luarocks 的插件。当前配置没有这类插件（图片显示用的是 snacks 的 image 模块，只依赖 `magick`），所以不影响任何功能。
 
 ### 需要 Neovim ≥ 0.12
 
@@ -312,15 +327,56 @@ live-preview 默认边打字边刷新。配置里删掉了它的 `TextChanged` �
 
 ## 迁移到新机器
 
-```fish
-# 1. 复制配置（含 lazy-lock.json，保证插件版本一致）
-cp -a /path/to/nvim ~/.config/nvim
+仓库地址：<https://github.com/agoodyu/yu-nvim>
 
-# 2. 装外部依赖
+### 三步
+
+```fish
+# 1. 克隆配置（含 lazy-lock.json，保证插件版本一致）
+git clone https://github.com/agoodyu/yu-nvim.git ~/.config/nvim
+
+# 2. 装外部依赖（幂等，重复执行只补缺失的包）
 ~/.config/nvim/scripts/bootstrap.fish
 
-# 3. 首次启动，等待插件和 parser 安装完成
+# 3. 首次启动，等插件克隆和 parser 编译完成
 nvim
 ```
 
-打开后先跑 `:checkhealth deps`，全绿即可用。
+第三步第一次会卡 2~4 分钟——要克隆 34 个插件、编译 17 个 treesitter parser。这是正常的，之后每次启动 12ms。
+
+### 脚本会装什么
+
+| 来源 | 包 |
+| --- | --- |
+| pacman | `git curl tar gcc make unzip nodejs tree-sitter-cli clang marksman lua-language-server stylua prettier ruff` |
+| AUR | `basedpyright-bin vscode-langservers-extracted codelldb-bin` |
+| rustup | `rust-analyzer` `rustfmt` `clippy` |
+
+### 验证
+
+```vim
+:checkhealth deps
+```
+
+15 项外部依赖全绿就说明环境完整。启动后如果缺东西，右上角会弹一次提示。
+
+### Rust 必须走 rustup
+
+`rust-analyzer` 要和编译器版本对齐，版本错位会导致过程宏展开**静默失败**（不报错，但跳转进不去宏内部）。所以不能用 pacman 或 mason 的版本，`bootstrap.fish` 已经处理好了：
+
+```fish
+rustup component add rust-analyzer rustfmt clippy
+```
+
+### 桌面环境互不干扰
+
+配置不依赖任何桌面主题系统，配色固定用 tokyonight。`shorindms init` / `shorindms update` 不会碰 `~/.config/nvim`，两边可以共存。
+
+### 改完配置后
+
+```bash
+cd ~/.config/nvim
+git add -A && git commit -m "..." && git push
+```
+
+`lazy-lock.json` 要一起提交，它锁定了 34 个插件的具体版本。
