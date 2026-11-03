@@ -12,53 +12,53 @@
 
 -- 把当前 buffer 的内容通过 WebSocket 推给浏览器
 local function push_update()
-    local ok, server = pcall(require, "livepreview.server")
-    if not ok or not server.connecting_clients then
-        return
-    end
+	local ok, server = pcall(require, "livepreview.server")
+	if not ok or not server.connecting_clients then
+		return
+	end
 
-    local websocket = require("livepreview.server.websocket")
-    local message = {
-        filepath = vim.api.nvim_buf_get_name(0),
-        type = "update",
-        content = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n"),
-    }
+	local websocket = require("livepreview.server.websocket")
+	local message = {
+		filepath = vim.api.nvim_buf_get_name(0),
+		type = "update",
+		content = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n"),
+	}
 
-    for _, client in ipairs(server.connecting_clients) do
-        pcall(websocket.send_json, client, message)
-    end
+	for _, client in ipairs(server.connecting_clients) do
+		pcall(websocket.send_json, client, message)
+	end
 end
 
 return {
-    "brianhuster/live-preview.nvim",
-    ft = { "markdown", "html", "css", "svg" }, -- 打开这些类型才加载
-    keys = {
-        {
-            "<leader>mp",
-            function()
-                vim.cmd("LivePreview start")
-                -- 启动后清掉"打字即刷新"的自动命令
-                vim.schedule(function()
-                    pcall(vim.api.nvim_clear_autocmds, {
-                        group = "LivePreview",
-                        event = { "TextChanged", "TextChangedI" },
-                    })
-                end)
-            end,
-            desc = "浏览器预览",
-        },
-        { "<leader>mP", "<cmd>LivePreview stop<cr>", desc = "关闭浏览器预览" },
-    },
-    config = function()
-        -- 保存文件时才推送更新
-        vim.api.nvim_create_autocmd("BufWritePost", {
-            callback = function()
-                local ok, server = pcall(require, "livepreview.server")
-                if ok and server.connecting_clients and #server.connecting_clients > 0 then
-                    push_update()
-                end
-            end,
-            desc = "保存后更新浏览器预览",
-        })
-    end,
+	"brianhuster/live-preview.nvim",
+	ft = { "markdown", "html", "css", "svg" }, -- 打开这些类型才加载
+	keys = {
+		{
+			"<leader>mp",
+			function()
+				vim.cmd("LivePreview start")
+				-- 启动后清掉"打字即刷新"的自动命令
+				vim.schedule(function()
+					pcall(vim.api.nvim_clear_autocmds, {
+						group = "LivePreview",
+						event = { "TextChanged", "TextChangedI" },
+					})
+				end)
+			end,
+			desc = "浏览器预览",
+		},
+		{ "<leader>mP", "<cmd>LivePreview stop<cr>", desc = "关闭浏览器预览" },
+	},
+	config = function()
+		-- 保存文件时才推送更新
+		vim.api.nvim_create_autocmd("BufWritePost", {
+			callback = function()
+				local ok, server = pcall(require, "livepreview.server")
+				if ok and server.connecting_clients and #server.connecting_clients > 0 then
+					push_update()
+				end
+			end,
+			desc = "保存后更新浏览器预览",
+		})
+	end,
 }

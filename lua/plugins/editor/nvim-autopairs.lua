@@ -3,7 +3,7 @@
 -- 输入左括号/引号时自动补右半，删除时成对删除
 -- ============================================================================
 return {
-    "windwp/nvim-autopairs",
-    event = "InsertEnter", -- 进插入模式才加载
-    opts = {},
+	"windwp/nvim-autopairs",
+	event = "InsertEnter", -- 进插入模式才加载
+	opts = {},
 }

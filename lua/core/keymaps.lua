@@ -6,8 +6,8 @@
 local map = vim.keymap.set
 
 -- ===== leader 键 =====
-vim.g.mapleader = " "        -- 空格作为主 leader
-vim.g.maplocalleader = ","   -- 逗号作为局部 leader
+vim.g.mapleader = " " -- 空格作为主 leader
+vim.g.maplocalleader = "," -- 逗号作为局部 leader
 
 -- ===== 插入模式 =====
 map("i", "jj", "<Esc>", { silent = true, desc = "退出插入模式" })

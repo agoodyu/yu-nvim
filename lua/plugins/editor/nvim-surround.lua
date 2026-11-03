@@ -3,7 +3,7 @@
 -- ys 添加、ds 删除、cs 替换，支持括号、引号、HTML 标签
 -- ============================================================================
 return {
-    "kylechui/nvim-surround",
-    event = "VeryLazy",
-    opts = {},
+	"kylechui/nvim-surround",
+	event = "VeryLazy",
+	opts = {},
 }

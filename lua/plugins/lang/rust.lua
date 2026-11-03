@@ -4,24 +4,24 @@
 -- 插件本身是 filetype 插件，必须 lazy = false
 -- ============================================================================
 return {
-    "mrcjkb/rustaceanvim",
-    version = "^9",   -- 锁大版本，避免破坏性更新
-    lazy = false,     -- 插件自己做懒加载，交给 lazy 反而会出问题
-    init = function()
-        -- 必须在插件加载前设置
-        vim.g.rustaceanvim = {
-            server = {
-                default_settings = {
-                    ["rust-analyzer"] = {
-                        cargo = { allFeatures = true },      -- 启用所有 feature 做分析
-                        check = { command = "clippy" },      -- 保存时用 clippy 检查而不是 cargo check
-                        procMacro = { enable = true },       -- 展开过程宏，跳转能进宏内部
-                        inlayHints = {
-                            closureReturnTypeHints = { enable = "always" }, -- 显示闭包返回类型
-                        },
-                    },
-                },
-            },
-        }
-    end,
+	"mrcjkb/rustaceanvim",
+	version = "^9", -- 锁大版本，避免破坏性更新
+	lazy = false, -- 插件自己做懒加载，交给 lazy 反而会出问题
+	init = function()
+		-- 必须在插件加载前设置
+		vim.g.rustaceanvim = {
+			server = {
+				default_settings = {
+					["rust-analyzer"] = {
+						cargo = { allFeatures = true }, -- 启用所有 feature 做分析
+						check = { command = "clippy" }, -- 保存时用 clippy 检查而不是 cargo check
+						procMacro = { enable = true }, -- 展开过程宏，跳转能进宏内部
+						inlayHints = {
+							closureReturnTypeHints = { enable = "always" }, -- 显示闭包返回类型
+						},
+					},
+				},
+			},
+		}
+	end,
 }
