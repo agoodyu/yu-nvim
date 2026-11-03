@@ -16,8 +16,7 @@
 ├── .gitignore
 ├── scripts/
 │   ├── bootstrap.fish             新机器一键安装外部依赖
-│   ├── push.sh                    日常一键格式化 + 提交 + 推送
-│   └── release.sh                 发版本：推送 + 打标签 + 建 Release
+│   └── push.sh                    日常一键格式化 + 提交 + 推送
 ├── after/ftplugin/
 │   └── rust.lua                   Rust 专用键位，只在 rust 缓冲区生效
 └── lua/
@@ -438,26 +437,6 @@ git add -A && git commit -m "..." && git push
 ```
 
 注意 `push.sh` 的版本号是**可选的附赠动作**：工作区干净时脚本会直接退出（「没有改动，无需提交」），标签和 Release 都不会创建。
-
-### 发版本：release.sh
-
-只发版本、不关心有没有新改动时用它：
-
-```fish
-~/.config/nvim/scripts/release.sh v1.1.0
-~/.config/nvim/scripts/release.sh v1.1.0 "新功能说明"
-```
-
-它会依次：有改动就先 `stylua` + 提交（没有改动则跳过）→ `git push` → 打附注标签并单独推送 → `gh release create --generate-notes`。
-
-两个脚本的分工：
-
-| 脚本 | 提交 | 推送 | 标签 + Release | 适合 |
-| --- | --- | --- | --- | --- |
-| `push.sh` | 有改动才提交 | 有改动才推送 | 传了版本号才做 | 日常改配置 |
-| `release.sh` | 有改动才提交 | 每次都推 | 每次都做 | 发版 |
-
-`release.sh` 会先检查版本号：必须以 `v` 开头，本地或远端已有同名标签就直接退出，不会产生半截状态。没装 gh 或 origin 不是 GitHub 时，标签照推，Release 跳过并提示。
 
 ### 手动流程
 
