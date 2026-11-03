@@ -25,9 +25,9 @@ fi
 # 1. 版本号先校验：格式、本地重名、远端重名，都在动仓库之前做完
 if [ -n "$TAG" ]; then
     case "$TAG" in
-        v[0-9]*) ;;
+        v[0-9]*.[0-9]*.[0-9]*) ;;
         *)
-            echo "!! 版本号要以 v 开头，例如 v1.1.0" >&2
+            echo "!! 版本号要写成 vX.Y.Z，例如 v1.1.0" >&2
             exit 1
             ;;
     esac
@@ -58,8 +58,13 @@ if [ -n "$(git status --porcelain)" ]; then
     git commit -m "$MSG"
     echo "==> 已提交: $(git log --oneline -1)"
 elif [ -z "$TAG" ]; then
-    echo "==> 没有改动，无需提交"
-    exit 0
+    # 上一次可能在 commit 之后、push 之前失败，这时不能直接退出
+    AHEAD="$(git rev-list --count '@{u}..HEAD' 2>/dev/null || echo 0)"
+    if [ "$AHEAD" -eq 0 ]; then
+        echo "==> 没有改动，已和远端同步"
+        exit 0
+    fi
+    echo "==> 没有改动，但有 $AHEAD 个提交未推送"
 else
     echo "==> 没有改动，跳过提交，直接在已有提交上打标签"
 fi
@@ -81,8 +86,11 @@ if [ -n "$TAG" ]; then
 
     REMOTE="$(git remote get-url origin 2>/dev/null || true)"
     if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1 && [[ "$REMOTE" == *github.com* ]]; then
-        gh release create "$TAG" --title "$TAG" --generate-notes
-        echo "==> Release 已创建: $(gh release view "$TAG" --json url -q .url)"
+        if gh release create "$TAG" --title "$TAG" --generate-notes; then
+            echo "==> Release 已创建: $(gh release view "$TAG" --json url -q .url)"
+        else
+            echo "!! Release 创建失败（标签已推送），可稍后重试: gh release create $TAG --generate-notes"
+        fi
     else
         echo "!! gh 未安装/未登录，或 origin 不是 GitHub，跳过 Release 创建（标签已推送）"
     fi
