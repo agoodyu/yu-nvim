@@ -43,3 +43,24 @@ map("n", "<C-Left>", "<C-w><", { silent = true, desc = "减小宽度" })
 map("n", "<C-Right>", "<C-w>>", { silent = true, desc = "增加宽度" })
 map("n", "<C-Up>", "<C-w>+", { silent = true, desc = "增加高度" })
 map("n", "<C-Down>", "<C-w>-", { silent = true, desc = "减小高度" })
+
+-- ===== 行移动 =====
+-- Alt + j/k 上下移动当前行，可视模式下移动整段选区并保持选中
+-- 用 :move 而不是 dd/p，剪切板和缩进都不会被破坏（:move 的地址是"移动到该行之后"）
+local function move_line(delta)
+    local lnum = vim.api.nvim_win_get_cursor(0)[1]
+    if (delta > 0 and lnum == vim.api.nvim_buf_line_count(0)) or (delta < 0 and lnum == 1) then
+        return
+    end
+    vim.cmd(delta > 0 and "move .+1" or "move .-2")
+end
+
+map("n", "<A-j>", function()
+    move_line(1)
+end, { silent = true, desc = "当前行下移" })
+map("n", "<A-k>", function()
+    move_line(-1)
+end, { silent = true, desc = "当前行上移" })
+-- 可视模式用 :move 的选区地址，gv 重新选中，便于连续按
+map("x", "<A-j>", ":move '>+1<CR>gv", { silent = true, desc = "选区下移" })
+map("x", "<A-k>", ":move '<-2<CR>gv", { silent = true, desc = "选区上移" })

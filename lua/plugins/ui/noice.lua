@@ -21,6 +21,9 @@ return {
             },
         },
         messages = { enabled = false }, -- 消息还用原生，避免撑开 cmdheight=0 的行
+        lsp = {
+            progress = { enabled = false }, -- 关掉右下角 LSP 进度浮窗，只影响显示
+        },
         notify = { enabled = false }, -- vim.notify 保持原生
         popupmenu = { enabled = false }, -- 补全菜单交给 blink，不让 noice 抢
     },

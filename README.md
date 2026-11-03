@@ -94,6 +94,8 @@
 | `Y`                        | 复制到行尾                       |
 | `空格 q`                   | 退出当前窗口                     |
 | `空格 z a` / `z r` / `z m` | 折叠当前块 / 展开全部 / 折叠全部 |
+| `Alt-j` / `Alt-k`          | 当前行下移 / 上移                |
+| `Alt-j` / `Alt-k`（可视）  | 整段选区下移 / 上移              |
 
 ### 窗口与分屏
 
@@ -303,6 +305,12 @@ Neovim 0.11 起的内置注释命令，由 treesitter 驱动，能按语法树�
 ### `cmdheight = 0`
 
 底部不保留命令行行，命令行交给 noice 浮窗。代价是：如果有消息没被 noice 接管（比如某些插件直接 `nvim_echo`），Neovim 会临时撑开一行，看到界面轻微跳动。
+
+### 没有 LSP 进度浮窗
+
+noice 默认把 LSP 的进度渲染成右下角的 `mini` 浮窗（就是 `basedpyright` 那两行，一条进行中、一条 100ms 内残留的"完成"）。配置里把 `lsp.progress.enabled` 关了，代价只是看不到进度，LSP 客户端、诊断、补全、格式化都不受影响。
+
+想恢复就把 `plugins/ui/noice.lua` 里的 `enabled` 改回 `true`；不想占用右下角可以改成 `view = "split"`（底部）或 `view = "popup"`（居中浮窗），再加 `format_done = ""` 就只去掉"完成"那条残留。
 
 ### `jj` 有 500ms 延迟
 
