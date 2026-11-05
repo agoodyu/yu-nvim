@@ -23,6 +23,10 @@ return {
                 basedpyright = {
                     analysis = {
                         typeCheckingMode = "standard", -- 类型检查强度
+                        -- 严格推断：字面量容器按元素逐项推断，而不是退化成 Unknown
+                        strictListInference = true,
+                        strictDictionaryInference = true,
+                        strictSetInference = true,
                         inlayHints = {
                             variableTypes = true, -- 变量名后面显示推断类型
                             callArgumentNames = true, -- 调用参数显示形参名

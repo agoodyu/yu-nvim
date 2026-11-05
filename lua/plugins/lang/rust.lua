@@ -14,8 +14,20 @@ return {
                 default_settings = {
                     ["rust-analyzer"] = {
                         cargo = { allFeatures = true }, -- 启用所有 feature 做分析
-                        check = { command = "clippy" }, -- 保存时用 clippy 检查而不是 cargo check
+                        check = {
+                            command = "clippy", -- 保存时用 clippy 检查而不是 cargo check
+                            workspace = false, -- 只检查当前 crate，大仓库快很多
+                            invocationStrategy = "once", -- 每次保存只跑一次，不随编辑反复触发
+                        },
                         procMacro = { enable = true }, -- 展开过程宏，跳转能进宏内部
+                        -- 实验性诊断又慢又爱误报，关掉
+                        diagnostics = { experimental = { enable = false } },
+                        completion = {
+                            autoimport = { enable = true }, -- 补全时自动带 use
+                            callable = { snippets = "add_parentheses" }, -- 函数补全自动补括号
+                        },
+                        -- 括号交给 nvim-autopairs，服务器别再插一遍
+                        typing = { autoClosingBrackets = "never" },
                         inlayHints = {
                             typeHints = { enable = true }, -- 变量、字段的推断类型
                             parameterHints = { enable = true }, -- 调用时的形参名

@@ -2,7 +2,7 @@
 # nvim 外部依赖安装（Arch / CachyOS，可重复执行）
 
 set -l pkgs git curl tar gcc make unzip nodejs tree-sitter-cli \
-    clang marksman lua-language-server stylua prettier ruff
+    clang marksman lua-language-server stylua prettier ruff uv
 
 echo "==> 安装官方源软件包"
 sudo pacman -S --needed $pkgs

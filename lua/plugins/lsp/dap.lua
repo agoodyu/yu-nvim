@@ -8,6 +8,7 @@ return {
     dependencies = {
         "rcarriga/nvim-dap-ui", -- 调试面板（变量、调用栈、断点）
         "nvim-neotest/nvim-nio", -- dap-ui 的异步依赖
+        "mfussenegger/nvim-dap-python", -- Python 适配器（debugpy）
     },
     event = { "BufReadPre", "BufNewFile" },
     config = function()
@@ -15,6 +16,10 @@ return {
         local dapui = require("dapui")
 
         dapui.setup()
+
+        -- Python：适配器用 "uv" 启动（uv run --with debugpy，不用往项目里装 debugpy）
+        -- 被调试进程的解释器由 dap-python 自己找：VIRTUAL_ENV → 项目 .venv
+        require("dap-python").setup("uv")
 
         -- 启动/附加时自动打开面板，结束/退出时自动关闭
         dap.listeners.before.attach.dapui_config = function()

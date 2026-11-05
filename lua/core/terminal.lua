@@ -1,37 +1,58 @@
 -- ============================================================================
 -- 底部终端
 -- 工作目录跟随当前文件，再次触发时关闭窗口并清理 buffer
+-- 对外提供 toggle()（空格 T）和 run(cmd)（语言运行用）
 -- ============================================================================
+
+local M = {}
 
 local term_win -- 记住终端窗口，用于开关切换
 
-local function toggle_term()
-    -- 已经开着：关窗口 + 删 buffer
-    -- 只关窗口的话 buffer 会留在内存里，bufferline 上会多一个空标签
-    if term_win and vim.api.nvim_win_is_valid(term_win) then
-        local buf = vim.api.nvim_win_get_buf(term_win)
-        vim.api.nvim_win_close(term_win, true)
-        if vim.api.nvim_buf_is_valid(buf) then
-            pcall(vim.api.nvim_buf_delete, buf, { force = true }) -- force 会杀掉终端内进程
-        end
-        term_win = nil
+-- 关掉终端窗口并删 buffer
+-- 只关窗口的话 buffer 会留在内存里，bufferline 上会多一个空标签
+local function close()
+    if not (term_win and vim.api.nvim_win_is_valid(term_win)) then
         return
     end
+    local buf = vim.api.nvim_win_get_buf(term_win)
+    vim.api.nvim_win_close(term_win, true)
+    if vim.api.nvim_buf_is_valid(buf) then
+        pcall(vim.api.nvim_buf_delete, buf, { force = true }) -- force 会杀掉终端内进程
+    end
+    term_win = nil
+end
 
-    -- 没开着：确定工作目录
-    local dir = vim.fn.expand("%:p:h") -- 当前文件所在目录
+-- 打开底部终端，cmd 为空时就是普通 shell
+local function open(cmd)
+    -- 工作目录跟随当前文件，没有文件就用 nvim 的 cwd
+    local dir = vim.fn.expand("%:p:h")
     if dir == "" or vim.fn.isdirectory(dir) == 0 then
-        dir = vim.fn.getcwd() -- 没有文件就用 nvim 的 cwd
+        dir = vim.fn.getcwd()
     end
 
     vim.cmd("botright split") -- 底部水平分屏
     term_win = vim.api.nvim_get_current_win() -- 记录新窗口
     vim.cmd("lcd " .. vim.fn.fnameescape(dir)) -- 只改这个窗口的 cwd，不影响其他
-    vim.cmd("terminal") -- 启动 $SHELL
+    vim.cmd("terminal " .. cmd) -- cmd 为空时启动 $SHELL
     vim.cmd("startinsert") -- 直接进插入模式
 end
 
-vim.keymap.set("n", "<leader>T", toggle_term, { silent = true, desc = "终端开关" })
+-- 空格 T：开 / 关终端
+function M.toggle()
+    if term_win and vim.api.nvim_win_is_valid(term_win) then
+        close()
+        return
+    end
+    open("")
+end
+
+-- 在底部终端里跑一条命令，重复调用会先关掉上一个终端
+function M.run(cmd)
+    close()
+    open(cmd)
+end
+
+vim.keymap.set("n", "<leader>T", M.toggle, { silent = true, desc = "终端开关" })
 
 vim.api.nvim_create_autocmd("TermOpen", {
     callback = function(ev)
@@ -54,3 +75,5 @@ vim.api.nvim_create_autocmd("TermOpen", {
         })
     end,
 })
+
+return M

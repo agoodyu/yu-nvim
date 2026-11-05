@@ -1,7 +1,7 @@
 # Neovim 配置
 
 基于 Neovim 0.12 + lazy.nvim 的手写配置，支持 Rust / C / C++ / Python / HTML / CSS / Markdown / Lua。
-启动约 12ms，34 个插件里只有 2 个在启动路径上。
+启动约 12ms，35 个插件里只有 2 个在启动路径上。
 
 ---
 
@@ -204,6 +204,16 @@ Neovim 0.11 起的内置注释命令，由 treesitter 驱动，能按语法树�
 | `空格 r c`         | 打开 Cargo.toml          |
 | `空格 r p` / `r j` | 跳转父模块 / 合并行      |
 
+### Python / Lua / C / C++
+
+| 键                 | 作用                             |
+| ------------------ | -------------------------------- |
+| `空格 r r`         | 运行当前文件（命令按语言自动选） |
+
+各语言实际执行的命令：Python 是 `uv run python <文件>`，会自动使用项目里的 pyproject / 虚拟环境；Lua 是 `lua <文件>`；C / C++ 用 `clang` / `clang++` 编译到 `/tmp/nvim-run-<文件名>` 再直接执行，不往源码目录丢产物。
+
+运行前如果缓冲区有改动会先保存，输出在底部终端里（和 `空格 T` 用的是同一个窗口）。
+
 ### 调试
 
 | 键                 | 作用                   |
@@ -211,6 +221,8 @@ Neovim 0.11 起的内置注释命令，由 treesitter 驱动，能按语法树�
 | `F5`               | 开始 / 继续            |
 | `F10` `F11` `F12`  | 单步跳过 / 进入 / 跳出 |
 | `空格 d b` / `d u` | 断点 / 调试面板        |
+
+Python 的调试适配器用 `uv run --with debugpy` 启动，不需要往项目里加 debugpy 依赖；被调试进程的解释器由 dap-python 依次查找 `VIRTUAL_ENV`、`CONDA_PREFIX`、项目下的 `venv` / `.venv` / `env` / `.env`。
 
 ### 补全（插入模式）
 
@@ -249,6 +261,7 @@ Neovim 0.11 起的内置注释命令，由 treesitter 驱动，能按语法树�
 | lsp    | conform          | BufWritePre                |
 | lsp    | nvim-treesitter  | 启动时（不支持懒加载）     |
 | lsp    | nvim-dap         | BufReadPre                 |
+| lsp    | nvim-dap-python  | 随 nvim-dap（依赖）        |
 | lang   | rustaceanvim     | 启动时（不支持懒加载）     |
 | lang   | crates           | BufRead Cargo.toml         |
 | tools  | vim-translator   | cmd / keys                 |
@@ -280,7 +293,7 @@ Neovim 0.11 起的内置注释命令，由 treesitter 驱动，能按语法树�
 
 脚本是幂等的，重复执行只会补缺失的包。内容包括：
 
-- pacman：`git curl tar gcc make unzip nodejs tree-sitter-cli clang marksman lua-language-server stylua prettier ruff`
+- pacman：`git curl tar gcc make unzip nodejs tree-sitter-cli clang marksman lua-language-server stylua prettier uv ruff`
 - AUR：`basedpyright-bin vscode-langservers-extracted codelldb-bin`
 - rustup：`rust-analyzer` / `rustfmt` / `clippy`
 
@@ -298,11 +311,11 @@ Neovim 0.11 起的内置注释命令，由 treesitter 驱动，能按语法树�
 - `rustaceanvim`：官方要求 `lazy = false`，改成懒加载会破坏 filetype 初始化
 - `nvim-treesitter`：官方要求 `lazy = false`，但真正的 parser 安装推迟到了 `VeryLazy` 之后
 
-其余 31 个插件全部懒加载，不影响启动。
+其余 32 个插件全部懒加载，不影响启动。
 
 ### 首次启动很慢
 
-新机器第一次打开会：克隆 34 个插件、编译 17 个 treesitter parser。屏幕可能卡几分钟，这是正常的。之后每次 12ms。
+新机器第一次打开会：克隆 35 个插件、编译 17 个 treesitter parser。屏幕可能卡几分钟，这是正常的。之后每次 12ms。
 
 ### `cmdheight = 0`
 
@@ -348,6 +361,12 @@ live-preview 默认边打字边刷新。配置里删掉了它的 `TextChanged` �
 
 live-preview 没提供这个配置项，只能自己实现，因此依赖 `livepreview.server.connecting_clients` 和 `websocket.send_json` 这两个内部 API，插件大版本升级后可能需要跟着调整。相关调用都包了 `pcall`，真失效只会静默跳过，不会报错。
 
+### Python 保存时自动修 lint
+
+保存 `.py` 走 conform 的三步：`ruff check --fix`（只做安全修复，比如删掉没用到的 import）→ `ruff check --select I --fix`（整理 import 顺序）→ `ruff format`。规则来自项目里的 `pyproject.toml` / `ruff.toml`，没有就用 ruff 默认值。不想让保存自动改代码，把 `plugins/lsp/conform.lua` 里 python 那行的 `ruff_fix` 去掉即可。
+
+basedpyright 另外开了 `strictListInference` / `strictDictionaryInference` / `strictSetInference`，容器字面量按元素逐项推断，inlay hints 里的 `list[int]`、`dict[str, int]` 更准。
+
 ### 代码格式由 stylua 统一
 
 `.stylua.toml` 定义了全部 Lua 代码的格式：4 空格缩进、单行不超过 100 列、字符串优先双引号。
@@ -383,7 +402,7 @@ git clone https://github.com/agoodyu/yu-nvim.git ~/.config/nvim
 nvim
 ```
 
-第三步第一次会卡 2~4 分钟——要克隆 34 个插件、编译 17 个 treesitter parser。这是正常的，之后每次启动 12ms。
+第三步第一次会卡 2~4 分钟——要克隆 35 个插件、编译 17 个 treesitter parser。这是正常的，之后每次启动 12ms。
 
 ### 脚本会装什么
 
@@ -409,6 +428,10 @@ nvim
 rustup component add rust-analyzer rustfmt clippy
 ```
 
+### Rust 检查只覆盖当前 crate
+
+`check.workspace = false`：保存时 clippy 只检查当前 crate，多 crate 工作区里其它成员不会跟着检查，换来的是保存不卡。同时关掉了 `diagnostics.experimental`（实验性诊断慢且爱误报），并把 `typing.autoClosingBrackets` 设为 `never`，括号交给 nvim-autopairs，避免补两次。另外 rustfmt 的 `default_edition` 设成 2024，跟当前工具链一致——没有 Cargo.toml 的单文件也会按 2024 解析。
+
 ### 桌面环境互不干扰
 
 配置不依赖任何桌面主题系统，配色固定用 tokyonight。`shorindms init` / `shorindms update` 不会碰 `~/.config/nvim`，两边可以共存。
@@ -420,7 +443,7 @@ cd ~/.config/nvim
 git add -A && git commit -m "..." && git push
 ```
 
-`lazy-lock.json` 要一起提交，它锁定了 34 个插件的具体版本。
+`lazy-lock.json` 要一起提交，它锁定了 35 个插件的具体版本。
 
 ---
 

@@ -21,11 +21,17 @@ return {
             rust = { "rustfmt" }, -- rustup 自带
             c = { "clang_format" }, -- clang 包自带
             cpp = { "clang_format" },
-            python = { "ruff_organize_imports", "ruff_format" }, -- 先整理 import 再格式化
+            -- 保存时依次：自动修可安全修复的 lint 问题（未用 import、多余代码）→ 整理 import → 格式化
+            python = { "ruff_fix", "ruff_organize_imports", "ruff_format" },
             html = { "prettier" },
             css = { "prettier" },
             markdown = { "prettier" },
             lua = { "stylua" },
+        },
+        -- rustfmt 会从 Cargo.toml 读 edition；没有 Cargo.toml 的单文件默认按 2021 解析，
+        -- 和当前工具链（1.85+ 新建 crate 为 2024）对不上，这里对齐到 2024
+        formatters = {
+            rustfmt = { options = { default_edition = "2024" } },
         },
         format_on_save = {
             timeout_ms = 3000, -- 超过 3 秒放弃，避免卡住写入

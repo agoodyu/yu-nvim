@@ -6,6 +6,7 @@ return {
     { bin = "basedpyright-langserver", pkg = "basedpyright-bin (AUR)" },
     { bin = "marksman", pkg = "marksman" },
     { bin = "ruff", pkg = "ruff" },
+    { bin = "uv", pkg = "uv" },
     { bin = "stylua", pkg = "stylua" },
     { bin = "prettier", pkg = "prettier" },
     { bin = "vscode-html-language-server", pkg = "vscode-langservers-extracted (AUR)" },
