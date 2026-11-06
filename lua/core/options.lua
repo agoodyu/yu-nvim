@@ -22,11 +22,11 @@ opt.timeoutlen = 200
 opt.nrformats = "bin,hex,alpha"
 
 -- ===== 文件编码 =====
-g.encoding = "UTF-8" -- nvim 内部使用的编码
-opt.fileencoding = "utf-8" -- 写入文件时使用的编码
+-- nvim 内部固定 UTF-8（'encoding' 已不可写），只需要管写入文件时的编码
+opt.fileencoding = "utf-8"
 
 -- ===== 外部修改 =====
-opt.autoread = true -- 文件被外部程序改动时自动重新载入
+-- 'autoread' 在 nvim 里默认就是开的，不用设
 
 -- ===== 备份与交换文件 =====
 opt.backup = false -- 不生成 ~ 结尾的备份文件

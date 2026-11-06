@@ -64,4 +64,30 @@ return {
             },
         },
     },
+    config = function(_, opts)
+        require("bufferline").setup(opts)
+
+        -- bufferline 自己按全部等级统计：只有 HINT/INFO 的标签也会被染色，count 里
+        -- 还含着这些屏幕上根本看不到的条目。包一层 get()，只留 error / warning，
+        -- 跟 core/lsp.lua 的 severity 下限保持一致
+        local mod = require("bufferline.diagnostics")
+        local orig = mod.get
+        mod.get = function(o)
+            local res = orig(o)
+            for bufnr, d in pairs(res) do
+                local e = (d.errors and d.errors.error) or 0
+                local w = (d.errors and d.errors.warning) or 0
+                if e + w == 0 then
+                    res[bufnr] = nil
+                else
+                    res[bufnr] = {
+                        count = e + w,
+                        level = e > 0 and "error" or "warning",
+                        errors = { error = e, warning = w },
+                    }
+                end
+            end
+            return res
+        end
+    end,
 }

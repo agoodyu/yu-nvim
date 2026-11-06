@@ -47,6 +47,15 @@ local function filetype()
     return icon .. (ft_names[ft] or ft)
 end
 
+-- 诊断计数只报 WARN 及以上，和 core/lsp.lua 的显示过滤保持一致
+-- lualine 自带的 nvim_diagnostic 源会把 HINT（rustc 的 note 之类）也算进去，
+-- 结果状态栏出现 H 而屏幕上一个标记都没有
+local function diagnostics_count()
+    local count = vim.diagnostic.count(0, { severity = { min = vim.diagnostic.severity.WARN } })
+    local sev = vim.diagnostic.severity
+    return { error = count[sev.ERROR] or 0, warn = count[sev.WARN] or 0, info = 0, hint = 0 }
+end
+
 return {
     "nvim-lualine/lualine.nvim",
     dependencies = {
@@ -63,7 +72,8 @@ return {
         extensions = { "neo-tree" }, -- 文件树里隐藏重复信息
         sections = {
             lualine_a = { "mode" }, -- 当前模式
-            lualine_b = { "branch", "diff", "diagnostics" }, -- git 分支、改动行数、错误数
+            -- git 分支、改动行数、错误数（自定义源，只算 WARN 以上）
+            lualine_b = { "branch", "diff", { "diagnostics", sources = { diagnostics_count } } },
             lualine_c = { "filename" }, -- 文件名
             lualine_x = { "fileformat", "encoding", filetype }, -- 换行符、编码、代码类型（图标 + 全名）
             lualine_y = { "progress" }, -- 文件滚动百分比

@@ -15,23 +15,28 @@
 ├── .stylua.toml                   Lua 格式化规则（stylua 和编辑器共用）
 ├── .gitignore
 ├── scripts/
+│   ├── bench-keys.lua             移动延迟测量，逐层对比找瓶颈
 │   ├── bootstrap.fish             新机器一键安装外部依赖
 │   └── push.sh                    日常一键格式化 + 提交 + 推送
 ├── after/ftplugin/
-│   └── rust.lua                   Rust 专用键位，只在 rust 缓冲区生效
+│   └── rust.lua                   Rust 专属键位（悬停菜单 / 展开宏 / 解释错误码…）
 └── lua/
     ├── core/                      基础配置，不依赖任何插件
     │   ├── init.lua               加载顺序（顺序有依赖，不要随意调整）
     │   ├── options.lua            编辑器选项：行号、缩进、搜索、撤销、编码
-    │   ├── autocmds.lua           自动命令：yank 同步、shada 延迟加载、终端
-    │   ├── keymaps.lua            通用键位：leader、折叠、窗口、分屏
-    │   ├── lsp.lua                LSP 诊断外观、hover 浮窗、接入后的键位
+    │   ├── autocmds.lua           自动命令：yank 同步、shada、终端窗口、命令行窗口
+    │   ├── bigfile.lua            大文件 / 超长行降级
+    │   ├── keymaps.lua            通用键位：leader、折叠、窗口、分屏、行移动
+    │   ├── comment.lua            注释键位：gcc / gcO / gco / gcI / gcA、空格 /
+    │   ├── lsp.lua                诊断外观与浮窗、接入缓冲区后的键位
+    │   ├── hover.lua              hover 浮窗（自己发请求、自己开窗）
+    │   ├── linetypes.lua          按需查本行所有变量的类型（空格 i t）
     │   ├── terminal.lua           底部终端开关，工作目录跟随当前文件
-    │   ├── deps.lua               启动后异步检查外部依赖
+    │   ├── run.lua                各语言的运行键位（空格 r r / r t / r d）
     │   └── lazy.lua               lazy.nvim 引导与插件分类导入
     │
-    ├── deps/                      外部依赖的声明与体检
-    │   ├── init.lua               依赖清单（二进制名 + 对应的包名）
+    ├── deps/                      外部依赖：清单 + 体检
+    │   ├── init.lua               依赖清单（bin + 对应包名）与启动后自检
     │   └── health.lua             :checkhealth deps 的实现
     │
     └── plugins/                   插件，一个文件一个插件，按用途分类
@@ -43,11 +48,10 @@
         │   ├── which-key.lua      按键提示
         │   ├── indent-blankline.lua 缩进参考线
         │   ├── scrolleof.lua      文件末尾滚动余量
-        │   ├── render-markdown.lua Markdown 实时渲染
-        │   └── snacks.lua          图片显示（只开 image 模块）
+        │   └── render-markdown.lua Markdown 实时渲染
         │
         ├── editor/                编辑增强
-        │   ├── hop.lua            定点跳转
+        │   ├── flash.lua          标签跳转（空格 j s / j S / j R）
         │   ├── neo-tree.lua       左侧文件树
         │   ├── gitsigns.lua       git 增删改标记
         │   ├── todo-comments.lua  TODO / FIXME 高亮
@@ -68,8 +72,12 @@
         │   ├── rust.lua           rustaceanvim
         │   └── crates.lua         Cargo.toml 增强
         │
+        ├── zh/                    面板中文化
+        │   └── which-key-zh.lua   which-key 中文词表（只补 nvim 自带键）
+        │
         └── tools/
             ├── translator.lua     翻译（bing 引擎）
+            ├── suda.lua           sudo 读写文件
             └── live-preview.lua  浏览器预览（保存时刷新）
 ```
 
@@ -83,7 +91,9 @@
 
 ## 键位
 
-`<leader>` 是**空格**，`<localleader>` 是**逗号**。
+`<leader>` 是**空格**，`<localleader>` 是**逗号**。忘了键位就按 `空格 ?`，会直接列出所有以空格开头的键（每组可以再往里展开）。
+
+下面的分类和 which-key 面板里的分组一一对应。
 
 ### 基础
 
@@ -93,33 +103,39 @@
 | `Esc`                      | 清除搜索高亮                     |
 | `Y`                        | 复制到行尾                       |
 | `空格 q`                   | 退出当前窗口                     |
+| `空格 ?`                   | 键位总览（空格开头的所有键）     |
 | `空格 z a` / `z r` / `z m` | 折叠当前块 / 展开全部 / 折叠全部 |
 | `Alt-j` / `Alt-k`          | 当前行下移 / 上移                |
 | `Alt-j` / `Alt-k`（可视）  | 整段选区下移 / 上移              |
 
 ### 窗口与分屏
 
-| 键                                  | 作用                    |
-| ----------------------------------- | ----------------------- |
-| `Ctrl-h` `Ctrl-j` `Ctrl-k` `Ctrl-l` | 切换到左/下/上/右侧窗口 |
-| `空格 w v`                          | 垂直分屏（左右）        |
-| `空格 w s`                          | 水平分屏（上下）        |
-| `空格 w c`                          | 关闭当前分屏            |
-| `空格 w o`                          | 只保留当前分屏          |
-| `Ctrl-方向键`                       | 调整分屏宽高            |
+| 键                                  | 作用                          |
+| ----------------------------------- | ----------------------------- |
+| `Ctrl-h` `Ctrl-j` `Ctrl-k` `Ctrl-l` | 切换到左 / 下 / 上 / 右侧窗口 |
+| `空格 w v`                          | 垂直分屏（左右）              |
+| `空格 w s`                          | 水平分屏（上下）              |
+| `空格 w c`                          | 关闭当前分屏                  |
+| `空格 w o`                          | 只保留当前分屏                |
+| `Ctrl-方向键`                       | 调整分屏宽高                  |
 
-### 文件与缓冲区
+### 缓冲区
 
 | 键                    | 作用                  |
 | --------------------- | --------------------- |
-| `空格 e`              | 文件树开关            |
-| `空格 E`              | 在树中定位当前文件    |
 | `Shift-l` / `Shift-h` | 下一个 / 上一个缓冲区 |
 | `空格 b p`            | 按字母选择缓冲区      |
 | `空格 b o`            | 关闭其他缓冲区        |
 | `空格 b w`            | 关闭当前缓冲区        |
 
-### 文件树内
+### 文件树
+
+| 键       | 作用               |
+| -------- | ------------------ |
+| `空格 e` | 文件树开关         |
+| `空格 E` | 在树中定位当前文件 |
+
+树里自己的按键：
 
 | 键                  | 作用                                                                              |
 | ------------------- | --------------------------------------------------------------------------------- |
@@ -131,56 +147,90 @@
 | `a` `d` `r` `c` `m` | 新建 / 删除 / 重命名 / 复制 / 移动                                                |
 | `H` / `R`           | 切换隐藏文件 / 刷新                                                               |
 
-### LSP
+### 跳转与 LSP
 
-| 键                  | 作用                                                   |
-| ------------------- | ------------------------------------------------------ |
-| `K`                 | 悬停文档（浮窗会获得焦点，`j/k` 滚动，`q`/`Esc` 关闭） |
-| `gd` `gD` `gI` `gy` | 定义 / 声明 / 实现 / 类型定义                          |
-| `空格 r n`          | 重命名符号                                             |
-| `空格 i h`          | 类型提示开关（变量/参数的推断类型，默认开启）          |
-| `空格 i t`          | 查看本行所有变量的类型（`a: Literal['a']` 这种）       |
-| `空格 c a`          | 代码操作                                               |
-| `空格 d d`          | 查看诊断浮窗                                           |
-| `[d` / `]d`         | 上一个 / 下一个诊断                                    |
-| `[e` / `]e`         | 上一个 / 下一个错误（跳过警告）                        |
+| 键                      | 作用                                                             |
+| ----------------------- | ---------------------------------------------------------------- |
+| `K`                     | 悬停文档（浮窗会获得焦点，`j/k` 滚动，`q`/`Esc` 关闭）           |
+| `gd` `gD` `gI` `gy`     | 定义 / 声明 / 实现 / 类型定义                                    |
+| `gO`                    | 当前文件的符号列表                                               |
+| `空格 r n` 或 `grn`     | 重命名符号                                                       |
+| `空格 c a` 或 `gra`     | 代码操作                                                         |
+| `grr` / `gri` / `grt`   | 引用 / 实现 / 类型定义（nvim 0.11 起自带）                       |
+| `gx`                    | 用系统程序打开光标下的路径或链接                                 |
+| `空格 j s`              | 标签跳转：输入几个字符，按标签跳过去（可视 / 操作符后也能用）    |
+| `空格 j S`              | 选中语法节点：外层代码块直接按标签选，treesitter 驱动            |
+| `空格 j R`              | 语法树搜索：可视模式或操作符后按，选中 treesitter 节点范围       |
+| `空格 i h`              | 类型提示开关（变量 / 参数的推断类型，默认开启）                  |
+| `空格 i t`              | 查看本行所有变量的类型（`a: Literal['a']` 这种）                 |
+
+### 诊断与调试
+
+| 键                | 作用                                       |
+| ----------------- | ------------------------------------------ |
+| `空格 d d`        | 查看诊断浮窗（可进入滚动，`q`/`Esc` 关闭） |
+| `[d` / `]d`       | 上一个 / 下一个诊断（跳过 HINT）           |
+| `[e` / `]e`       | 上一个 / 下一个错误（跳过警告）            |
+| `空格 d f`        | 开始 / 继续                                |
+| `空格 d s`        | 单步跳过                                   |
+| `空格 d n`        | 单步进入                                   |
+| `空格 d o`        | 单步跳出                                   |
+| `空格 d b`        | 断点                                       |
+| `空格 d u`        | 调试面板                                   |
+| `F5`              | 开始 / 继续（`空格 d f` 的别名）           |
+| `F10` `F11` `F12` | 单步跳过 / 进入 / 跳出（同上）              |
+
+各语言的调试适配器：
+
+| 语言 | 适配器 | 说明 |
+| --- | --- | --- |
+| Rust | `rt_lldb` | rustaceanvim 自带，检测到 codelldb 就用 codelldb |
+| Python | `dap-python` | `uv run --with debugpy` 启动，不用往项目里装 debugpy |
+| C / C++ | `codelldb` | `lua/plugins/lsp/dap.lua` 里注册的适配器，程序和工作目录取当前文件 |
+
+被调试进程的解释器由 dap-python 依次查找 `VIRTUAL_ENV`、`CONDA_PREFIX`、项目下的 `venv` / `.venv` / `env` / `.env`。
 
 ### 代码与工具
 
-| 键         | 作用                                   |
-| ---------- | -------------------------------------- |
-| `空格 f`   | 格式化当前文件（保存时也会自动格式化） |
-| `空格 h p` | 定点跳转（HopWord）                    |
-| `空格 T`   | 终端开关                               |
-| `空格 t w` | 翻译光标下的词                         |
-| `空格 t v` | 翻译选中文本（可视模式）               |
-| `空格 m p` | 浏览器预览（保存时刷新）               |
-| `空格 m P` | 关闭浏览器预览                         |
-| `空格 x t` | TODO 列表                              |
+| 键                 | 作用                                   |
+| ------------------ | -------------------------------------- |
+| `空格 f`           | 格式化当前文件（保存时也会自动格式化） |
+| `空格 T`           | 终端开关                               |
+| `空格 t w`         | 翻译光标下的词                         |
+| `空格 t v`         | 翻译选中文本（可视模式）               |
+| `空格 m p`         | 浏览器预览（保存时刷新）               |
+| `空格 m P`         | 关闭浏览器预览                         |
+| `空格 x t`         | TODO 列表                              |
+| `空格 u W` / `u R` | 以 sudo 写入 / 重新打开当前文件        |
 
 ### 注释
 
 Neovim 0.11 起的内置注释命令，由 treesitter 驱动，能按语法树判断注释范围（Python 的 `#` 在字符串里不会被误判）。
 
-| 键                | 作用                             |
-| ----------------- | -------------------------------- |
-| `gcc`             | 注释 / 取消当前行                |
-| `gc` + motion     | 注释 motion 覆盖的行             |
-| `gciw`            | 注释当前单词                     |
-| `gcap`            | 注释当前段落                     |
-| 可视模式选中后 `gc` | 注释选区                       |
-| `gbc`             | 注释整个文件                     |
-| `gcgc`            | 取消整个注释块                   |
+内置只有 `gc` / `gcc` / `gb`，表里 `gcO` / `gco` / `gcI` / `gcA` 和 `空格 /` 这几条是 `core/keymaps.lua` 里补的。注释符现读 `'commentstring'`，所以块注释语言（CSS / HTML / Markdown）会自己补上 `*/` 或 `-->`；`gcI` 跳过行首缩进插入，`gcA` 在块注释时把光标停在前后两个符号中间。
+
+| 键                  | 作用                                  |
+| ------------------- | ------------------------------------- |
+| `gcc`               | 注释 / 取消当前行                     |
+| `空格 /`            | 注释 / 取消当前行，可视模式作用于选区 |
+| `gcO` / `gco`       | 上方 / 下方新起一行注释，进插入模式   |
+| `gcI` / `gcA`       | 行首 / 行尾插入注释，进插入模式       |
+| `gc` + motion       | 注释 motion 覆盖的行                  |
+| `gciw`              | 注释当前单词                          |
+| `gcap`              | 注释当前段落                          |
+| 可视模式选中后 `gc` | 注释选区                              |
+| `gbc`               | 注释整个文件                          |
+| `gcgc`              | 取消整个注释块                        |
 
 各语言实际使用的注释符：
 
-| 语言              | 注释符       |
-| ----------------- | ------------ |
-| Rust / C / C++    | `//`         |
-| Python / Shell    | `#`          |
-| Lua               | `--`         |
-| HTML / Markdown   | `<!-- -->`   |
-| CSS               | `/* */`      |
+| 语言            | 注释符     |
+| --------------- | ---------- |
+| Rust / C / C++  | `//`       |
+| Python / Shell  | `#`        |
+| Lua             | `--`       |
+| HTML / Markdown | `<!-- -->` |
+| CSS             | `/* */`    |
 
 ### Git（仅在仓库内生效）
 
@@ -192,37 +242,34 @@ Neovim 0.11 起的内置注释命令，由 treesitter 驱动，能按语法树�
 | `空格 g r`  | 撤销改动            |
 | `空格 g b`  | 查看行历史          |
 
-### Rust
+### 运行：Rust
 
 | 键                 | 作用                     |
 | ------------------ | ------------------------ |
-| `空格 r k`         | 悬停操作菜单（展开宏等） |
 | `空格 r r` / `r t` | 运行目标 / 运行测试      |
 | `空格 r d`         | 调试目标                 |
-| `空格 r e`         | 解释错误码               |
-| `空格 r m`         | 展开宏                   |
-| `空格 r c`         | 打开 Cargo.toml          |
-| `空格 r p` / `r j` | 跳转父模块 / 合并行      |
 
-### Python / Lua / C / C++
+### 运行：Rust 专属操作
 
-| 键                 | 作用                             |
-| ------------------ | -------------------------------- |
-| `空格 r r`         | 运行当前文件（命令按语言自动选） |
+`空格 r k` 悬停操作菜单、`空格 r e` 解释错误码、`空格 r m` 展开宏、`空格 r c` 打开 Cargo.toml、`空格 r p` / `r j` 跳转父模块 / 合并行——这些是 rustaceanvim 独有的，放在 `after/ftplugin/rust.lua`。
+
+### 运行：Python / Lua / C / C++
+
+| 键         | 作用                             |
+| ---------- | -------------------------------- |
+| `空格 r r` | 运行当前文件（命令按语言自动选） |
+| `空格 r t` | 跑当前文件的测试（仅 Python）    |
+| `空格 r p` | 跑整个项目的测试（仅 Python）    |
+
+各语言实际执行的命令：Python 是 `uv run python <文件>`，会自动使用项目里的 pyproject / 虚拟环境；Lua 是 `lua <文件>`；C / C++ 用 `clang` / `clang++` 编译到 `/tmp/nvim-run-<文件名>` 再直接执行，不往源码目录丢产物。Python 的测试是 `uv run --with pytest pytest <文件>`——`--with pytest` 是关键，项目没把 pytest 写成依赖时 uv 会直接报 `Failed to spawn: pytest`，加上它就临时把 pytest 装进这次运行的环境（和 dap-python 用 `uv run --with debugpy` 同一个思路）。
+
+`空格 r t` 只跑当前文件；文件里没有测试函数时 pytest 会显示 `collected 0 items` 并以退出码 5 结束，这时用 `空格 r p` 跑整个项目。
+
+Rust 的测试走 `空格 r t`，但那是 rustaceanvim 的 testables（从 code lens 上取测试目标），和这里的 pytest 不是一回事。
 
 各语言实际执行的命令：Python 是 `uv run python <文件>`，会自动使用项目里的 pyproject / 虚拟环境；Lua 是 `lua <文件>`；C / C++ 用 `clang` / `clang++` 编译到 `/tmp/nvim-run-<文件名>` 再直接执行，不往源码目录丢产物。
 
 运行前如果缓冲区有改动会先保存，输出在底部终端里（和 `空格 T` 用的是同一个窗口）。
-
-### 调试
-
-| 键                 | 作用                   |
-| ------------------ | ---------------------- |
-| `F5`               | 开始 / 继续            |
-| `F10` `F11` `F12`  | 单步跳过 / 进入 / 跳出 |
-| `空格 d b` / `d u` | 断点 / 调试面板        |
-
-Python 的调试适配器用 `uv run --with debugpy` 启动，不需要往项目里加 debugpy 依赖；被调试进程的解释器由 dap-python 依次查找 `VIRTUAL_ENV`、`CONDA_PREFIX`、项目下的 `venv` / `.venv` / `env` / `.env`。
 
 ### 补全（插入模式）
 
@@ -233,6 +280,7 @@ Python 的调试适配器用 `uv run --with debugpy` 启动，不需要往项目
 | `Ctrl-j` / `Ctrl-k` | 下一个 / 上一个候选              |
 | `Enter`             | 接受选中                         |
 | `Ctrl-e`            | 取消补全                         |
+| `Ctrl-s`            | 函数签名帮助                     |
 
 ---
 
@@ -247,8 +295,8 @@ Python 的调试适配器用 `uv run --with debugpy` 启动，不需要往项目
 | ui     | which-key        | VeryLazy                   |
 | ui     | indent-blankline | BufReadPost                |
 | ui     | scrolleof        | CursorMoved                |
+| editor | flash            | keys（按需加载）           |
 | editor | neo-tree         | cmd `Neotree`              |
-| editor | hop              | keys                       |
 | editor | gitsigns         | BufReadPre                 |
 | editor | todo-comments    | BufReadPost                |
 | editor | illuminate       | BufReadPost                |
@@ -267,7 +315,6 @@ Python 的调试适配器用 `uv run --with debugpy` 启动，不需要往项目
 | tools  | vim-translator   | cmd / keys                 |
 | tools  | live-preview     | ft（markdown / html）      |
 | tools  | render-markdown  | ft（markdown）             |
-| ui     | snacks（image）  | VeryLazy                   |
 
 ---
 
@@ -305,17 +352,60 @@ Python 的调试适配器用 `uv run --with debugpy` 启动，不需要往项目
 
 ### 启动耗时
 
-约 12ms（`nvim --startuptime` 实测）。只有三个插件在启动路径上：
+约 **12.6ms**（`nvim --startuptime` 实测，三次取样 12.5 / 12.5 / 13.7）。只有四个插件在启动路径上：
 
-- `tokyonight`：配色必须在启动时应用
+- `tokyonight`：配色必须在启动时应用，否则会闪一下默认配色
 - `rustaceanvim`：官方要求 `lazy = false`，改成懒加载会破坏 filetype 初始化
 - `nvim-treesitter`：官方要求 `lazy = false`，但真正的 parser 安装推迟到了 `VeryLazy` 之后
+- `suda`：必须在第一个 `BufReadPre` 之前注册好，晚于打开文件就等于没开
 
-其余 32 个插件全部懒加载，不影响启动。
+其余 31 个插件全部懒加载，不影响启动。
+
+两处额外的启动优化：
+
+- **诊断外观推迟到 `VeryLazy`**：碰一下 `vim.diagnostic` 就要 require 整个模块（实测 1.0ms）。现在 `core/lsp.lua` 只注册一个 `User VeryLazy` 回调，`require('core.lsp')` 从 1.21ms 降到 0.19ms。实测 VeryLazy 之后配置正常生效（`prefix = ●`、`update_in_insert = true`、诊断照常画行尾文字），而且 LSP 比它晚得多，看不到差别
+- **跳过六个用不到的内置插件**（`gzip` / `rplugin` / `tarPlugin` / `zipPlugin` / `spellfile` / `tutor`）：在 `init.lua` 里设 `vim.g.loaded_*`，它们的脚本仍会被 sourcing 但立刻返回（gzip 从 0.123ms 降到 0.010ms）。`matchit`、`matchparen`、`netrw`、`shada`、`man`、`editorconfig` 都保留
 
 ### 首次启动很慢
 
 新机器第一次打开会：克隆 35 个插件、编译 17 个 treesitter parser。屏幕可能卡几分钟，这是正常的。之后每次 12ms。
+
+### 面板中文词表不覆盖自己的键
+
+`plugins/zh/which-key-zh.lua` 是一份按 LazyVim 默认键位写的中文词表，跟这套配置的布局并不一致——LazyVim 里 `<leader>d` 是「调试」、`<leader>x` 是「诊断」，这里是「诊断与调试」和「TODO」。不加限制的话它会在每次 `CursorHold` 之后把面板文字又改回去。
+
+现在它只补两类：nvim 自带键（`<c-w>h` → 移至左侧窗口、`!` → 运行程序）和插件留下的英文描述。词表本身也从 820 条精简到 **306 条常用键**（文件 1069 行 → 555 行），treesitter 文本对象那类几百个 `a"` / `il(` 组合全部去掉。空格开头的键、以及 `ui/which-key.lua` 里声明过分组的键（`g` / `gr` / `gc` / `z` / `[` / `]` / `<c-w>`）在 `ours()` 里跳过——那几组在 `ui/which-key.lua` 里写了 `mode = { "n", "x", "o" }`，普通 / 可视 / 操作符三个模式都用我们自己的名字。
+
+想改自己的键位文字，去改映射的 `desc` 或 which-key 的分组名，别指望词表。
+
+### 移动卡顿：先量再改
+
+`j/k/h/l` 发粘时先跑一次测量，别凭感觉调参数：
+
+```
+:luafile scripts/bench-keys.lua
+```
+
+它会在当前文件上逐层测 `j`（当前配置 / 关光标行 / scrolloff=0 / 折行 / 关符号列 / 10j 滚动 / 关语法高亮），输出均值、p90、p99、最大值，顺便标出最慢的那几次。
+
+实测（80×24 伪终端，kitty 里绝对值会更高，比例是对的）：
+
+| 场景 | 单次 `j` |
+|---|---|
+| lua 配置文件（378 行） | 0.88ms |
+| 同上，关掉光标行 | 0.69ms |
+| 同上，关掉语法高亮 | 0.15ms |
+| 每行 2800 字符的文件 | 4.4ms |
+| 同上，降级后（关高亮 + 折行） | 2.5ms |
+| 24000 行的文件 | 0.18ms → 降级后 0.03ms |
+
+结论是 treesitter 重画占了大头（普通文件里 83%），lualine、bufferline、gitsigns、indent-blankline、illuminate、scrollEOF 加一起不到 0.05ms。真正会卡住手的是**超长行**和**超大文件**——一行 2800 字符比正常文件慢 7 倍，而默认的 `wrap = false` 让 nvim 每次都要算整行。
+
+所以 `core/autocmds.lua` 加了自动降级：超过 2000 行、400KB，或单行超过 1000 字符时，关掉语法高亮（退回 regex 高亮，颜色还在）、光标行、相对行号和 treesitter 折叠缩进；长行的再开折行。日常文件碰不到这些阈值——README 538 行、最长 274 字符，lua 配置最长 99 字符。
+
+降级时右下角会提示原因，想撤销就把 `heavy` 表里的阈值调大，或者 `:e` 重新打开前先调。
+
+嫌普通文件还慢的话，按上面表里的两个旋钮：`cursorline = false`（省 20%）、`scrolloff` 调小（省 20%），代价是光标行高亮和居中滚动没了。
 
 ### `cmdheight = 0`
 
@@ -332,6 +422,20 @@ noice 默认把 LSP 的进度渲染成右下角的 `mini` 浮窗（就是 `based
 inlay hints 默认开启：变量、参数后面直接显示推断出来的类型，不用悬停。Python 由 basedpyright 的 `analysis.inlayHints` 三项控制（变量类型 / 实参名 / 返回类型），Rust 由 rust-analyzer 的 `inlayHints` 控制（类型、参数、链式调用、闭包返回，并用 `maxLength = 25` 截断过长的类型），C/C++、Lua、Markdown 由各自服务器提供。
 
 两处细节：进入插入模式时提示会自动隐藏，离开后恢复——每敲一个字符服务器都要重算一遍，边打边刷既卡又跳；`空格 i h` 是全局开关，切换后所有缓冲区一起生效，关掉之后新打开的文件也不会自动打开。服务器对字面量赋值（`a = 'a'`）不发 inlay hint，要看这类类型按 `空格 i t`——它按需对光标所在行的每个标识符发一次 hover 请求，把类型拼成一列弹出来。
+
+### 诊断只显示 WARN 及以上
+
+`core/lsp.lua` 给 `virtual_text`、`signs`、`underline`、`jump` 都加了 `severity = { min = WARN }`。原因是 rustc/clippy 会把一条警告拆成"警告 + note"两条推过来，note 属于 HINT 级；不过滤的话一个 `unused_assignments` 会在屏幕上变成两行。
+
+过滤后 HINT 不画行尾文字、不占符号列、`]d` 也不会停在它上面。`空格 d d` 的浮窗不做过滤，note 想看随时能看。
+
+行尾文字另外做了压缩：多行消息折成一行，超过 100 字截断加 `…`。rustc 的备注经常几百字，`wrap=false` 之后会一直拖到屏幕外。
+
+状态栏和标签栏的数字也跟着对齐了：`ui/lualine.lua` 把诊断组件换成自定义 `sources`（只返回 error / warn），`ui/bufferline.lua` 在 `setup` 之后包了一层 `bufferline.diagnostics.get`，把 info / hint 从计数和标签染色里去掉。所以只有提示的缓冲区现在既不显示标记，也不在状态栏和标签上出现数字。
+
+bufferline 那层是改第三方模块的方法，升级插件大版本时留意 `diagnostics.get` 的返回结构有没有变（`{count, level, errors}`）。
+
+`空格 d d` 打开浮窗后光标会直接进到窗口里，`j/k`、`<C-d>`/`<C-u>` 可以滚动，`q` 或 `Esc` 关闭并回到原来的窗口。`]d`/`[d` 跳转时弹出的那个浮窗故意不抢焦点——连按 `]d` 不会被窗口切换打断。
 
 ### `jj` 有 500ms 延迟
 
@@ -377,7 +481,7 @@ basedpyright 另外开了 `strictListInference` / `strictDictionaryInference` / 
 
 ### lazy 的 luarocks 提示可以忽略
 
-`:checkhealth lazy` 会提示没装 luarocks、无法安装需要 luarocks 的插件。当前配置没有这类插件（图片显示用的是 snacks 的 image 模块，只依赖 `magick`），所以不影响任何功能。
+当前配置没有这类插件，所以不影响任何功能。
 
 ### 需要 Neovim ≥ 0.12
 

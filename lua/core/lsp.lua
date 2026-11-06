@@ -1,236 +1,91 @@
 -- ============================================================================
 -- LSP 通用配置
--- 诊断外观、hover 浮窗、接入缓冲区后的快捷键
+-- 诊断外观、诊断浮窗、接入缓冲区后的键位
+-- hover 浮窗见 core/hover.lua，本行变量类型见 core/linetypes.lua
 -- 具体语言服务器的启用在 lua/plugins/lsp/lspconfig.lua
 -- ============================================================================
 
+local hover = require("core.hover")
+local line_types = require("core.linetypes")
+
+local map = vim.keymap.set
+
 -- ===== 诊断外观 =====
-vim.diagnostic.config({
-    virtual_text = { spacing = 4, prefix = "●" }, -- 行尾虚拟文字，圆点开头，离代码 4 格
-    signs = true, -- 左侧符号列显示图标
-    underline = true, -- 出错位置加下划线
-    severity_sort = true, -- 同一行多个诊断时按严重程度排序
-    update_in_insert = true, -- 插入模式下也刷新诊断
-    float = { border = "rounded", source = true }, -- <leader>dd 浮窗：圆角，显示来源
-    jump = { float = true }, -- ]d / [d 跳转时用浮窗预览
+-- 整段推迟到 VeryLazy 再配：碰一下 vim.diagnostic 就要 require 它，实测 1.0ms，
+-- 而启动阶段根本不会有诊断到达（LSP 比 VeryLazy 晚得多），所以观感没区别
+local function setup_diagnostics()
+    -- 等级下限统一卡在 WARN：HINT 级里塞的是 rustc 的 note（"overwritten here before ..."
+    -- 这类），一条 clippy 警告会被拆成两条显示。W/E 不受影响，完整内容仍能在浮窗里看。
+    local warn_up = { min = vim.diagnostic.severity.WARN }
+
+    -- 行尾文字压成一行再截断：rustc 的备注常常很长，wrap=false 之后会一直拖到屏幕外
+    local function one_line(d)
+        local msg = d.message:gsub("%s*\n%s*", " ")
+        if vim.fn.strchars(msg) > 100 then
+            msg = vim.fn.strcharpart(msg, 0, 100) .. "…"
+        end
+        return msg
+    end
+
+    vim.diagnostic.config({
+        -- 行尾虚拟文字，圆点开头，离代码 4 格
+        virtual_text = { spacing = 4, prefix = "●", severity = warn_up, format = one_line },
+        signs = { severity = warn_up }, -- 左侧符号列显示图标
+        underline = { severity = warn_up }, -- 出错位置加下划线
+        severity_sort = true, -- 同一行多个诊断时按严重程度排序
+        update_in_insert = true, -- 插入模式下也刷新诊断
+        -- <leader>dd 浮窗：圆角，显示来源，不加等级过滤（note 想看还是能看）
+        float = { border = "rounded", source = true },
+        -- ]d / [d 跳过 hint，并在跳过去之后弹浮窗
+        -- float = true 已标记废弃（0.14 移除），官方给的替代就是 on_jump
+        jump = {
+            severity = warn_up,
+            on_jump = function(d)
+                if d then
+                    vim.diagnostic.open_float({ scope = "cursor" })
+                end
+            end,
+        },
+    })
+end
+
+vim.api.nvim_create_autocmd("User", {
+    pattern = "VeryLazy",
+    once = true,
+    callback = setup_diagnostics,
+    desc = "诊断外观（推迟加载 vim.diagnostic）",
 })
 
 -- 类型提示的全局开关，LspAttach 和新开的缓冲区都读它
 vim.g.inlay_hints = true
 
 local map = vim.keymap.set
-
--- ===== hover 浮窗 =====
--- 默认浮窗不抢焦点，按键都落在代码窗口里
--- 这里自己发请求、自己开窗，打开后把焦点切进去，滚动键直接可用
--- q 或 Esc 关闭并回到原窗口
-
-local function hover()
-    local buf = vim.api.nvim_get_current_buf() -- 当前缓冲区
-    local params = vim.lsp.util.make_position_params(0, "utf-8") -- 光标位置参数
-    local origin = vim.api.nvim_get_current_win() -- 记下原窗口，关闭后回去
-
-    vim.lsp.buf_request(buf, "textDocument/hover", params, function(err, result, _)
-        if err or not result or vim.tbl_isempty(result) then
-            return -- 没有内容就不开窗
-        end
-
-        -- 自己渲染浮窗：vim.lsp.handlers.hover 在 0.12 已标记废弃
-        local lines = vim.lsp.util.convert_input_to_markdown_lines(result.contents)
-
-        -- 去掉首尾空行
-        -- 官方推荐 vim.split + trimempty，但那个会连中间的代码块空行一起删掉
-        -- vim.lsp.util.trim_empty_lines 已废弃，这里自己实现同样的首尾裁剪
-        while #lines > 0 and vim.trim(lines[1]) == "" do
-            table.remove(lines, 1)
-        end
-        while #lines > 0 and vim.trim(lines[#lines]) == "" do
-            table.remove(lines)
-        end
-
-        if #lines == 0 then
-            return
-        end
-
-        local fb, win = vim.lsp.util.open_floating_preview(lines, "markdown", {
-            border = "rounded",
-            max_height = math.max(6, math.floor(vim.o.lines * 0.6)), -- 最高屏幕的 60%
-            focusable = true, -- 允许聚焦
-        })
-        if not win then
-            return
-        end
-
-        -- 关闭浮窗并回到原窗口
-        local function close()
-            if vim.api.nvim_win_is_valid(win) then
-                vim.api.nvim_win_close(win, true)
-            end
-            if vim.api.nvim_win_is_valid(origin) then
-                vim.api.nvim_set_current_win(origin)
-            end
-        end
-
-        local opts = { buffer = fb, silent = true, nowait = true }
-        map("n", "q", close, opts) -- q 关闭
-        map("n", "<Esc>", close, opts) -- Esc 关闭
-
-        vim.wo[win].cursorline = true -- 高亮当前行，滚动时能看清位置
-        vim.api.nvim_set_current_win(win) -- 焦点切进浮窗
-    end)
-end
-
--- ===== 本行变量类型 =====
--- inlay hints 由服务器决定发不发：`a = 18` 这种字面量赋值它认为类型显然，不发提示
--- 这里按需自己发 hover 请求，把光标所在行里每个变量的类型拼出来
-
--- 常见的语言关键字，没必要为它们发请求
-local keywords = {
-    ["and"] = true,
-    ["as"] = true,
-    ["assert"] = true,
-    ["async"] = true,
-    ["await"] = true,
-    ["break"] = true,
-    ["case"] = true,
-    ["class"] = true,
-    ["continue"] = true,
-    ["def"] = true,
-    ["del"] = true,
-    ["elif"] = true,
-    ["else"] = true,
-    ["except"] = true,
-    ["False"] = true,
-    ["finally"] = true,
-    ["for"] = true,
-    ["from"] = true,
-    ["global"] = true,
-    ["if"] = true,
-    ["import"] = true,
-    ["in"] = true,
-    ["is"] = true,
-    ["lambda"] = true,
-    ["let"] = true,
-    ["None"] = true,
-    ["nonlocal"] = true,
-    ["not"] = true,
-    ["or"] = true,
-    ["pass"] = true,
-    ["raise"] = true,
-    ["return"] = true,
-    ["self"] = true,
-    ["True"] = true,
-    ["try"] = true,
-    ["while"] = true,
-    ["with"] = true,
-    ["yield"] = true,
-}
-
-local function hover_params(client, buf, row, col, line)
-    local encoding = client.offset_encoding or "utf-16"
-    local character = col
-    if encoding == "utf-16" then
-        character = select(2, vim.str_utfindex(line, col))
-    elseif encoding == "utf-32" then
-        character = select(1, vim.str_utfindex(line, col))
-    end
-    return {
-        textDocument = vim.lsp.util.make_text_document_params(buf),
-        position = { line = row, character = character },
-    }
-end
-
-local function line_types()
-    local buf = vim.api.nvim_get_current_buf()
-    local clients = vim.lsp.get_clients({ bufnr = buf, method = "textDocument/hover" })
-    if #clients == 0 then
-        vim.notify("当前缓冲区没有语言服务器", vim.log.levels.WARN)
-        return
-    end
-    local client = clients[1]
-
-    local row = vim.api.nvim_win_get_cursor(0)[1] - 1
-    local line = vim.api.nvim_buf_get_lines(buf, row, row + 1, false)[1] or ""
-
-    -- 收集本行的标识符，同一个名字只查第一次出现的位置
-    local names, seen = {}, {}
-    local i = 1
-    while true do
-        local s, e = line:find("[%a_][%w_]*", i)
-        if not s then
-            break
-        end
-        local name = line:sub(s, e)
-        if not keywords[name] and not seen[name] then
-            seen[name] = true
-            names[#names + 1] = { name = name, col = s - 1 }
-        end
-        i = e + 1
+-- ===== 诊断浮窗 =====
+-- 默认浮窗只看得见、进不去，长诊断没法滚动。这里自己开窗后把焦点切进去，
+-- q / Esc 关窗并回到原来的窗口；不这么做的话光标一直在代码上，浮窗只读
+-- 注意 focusable 只在这一处传：]d / [d 的 on_jump 浮窗保持不抢焦点
+local function diagnostics_float()
+    local origin = vim.api.nvim_get_current_win()
+    local fb, win = vim.diagnostic.open_float({ focusable = true, focus = false })
+    if not win then
+        return -- 这一行没有诊断，不开空窗
     end
 
-    if #names == 0 then
-        vim.notify("本行没有可查的标识符", vim.log.levels.INFO)
-        return
+    local function close()
+        if vim.api.nvim_win_is_valid(win) then
+            vim.api.nvim_win_close(win, true)
+        end
+        if vim.api.nvim_win_is_valid(origin) then
+            vim.api.nvim_set_current_win(origin)
+        end
     end
 
-    local found = {}
-    local pending = #names
-    for idx, item in ipairs(names) do
-        vim.lsp.buf_request_all(
-            buf,
-            "textDocument/hover",
-            hover_params(client, buf, row, item.col, line),
-            function(res)
-                for _, r in pairs(res) do
-                    if r.result and r.result.contents then
-                        local lines =
-                            vim.lsp.util.convert_input_to_markdown_lines(r.result.contents)
-                        -- 第一行通常是代码块围栏，跳过它再找正文
-                        local first
-                        for _, l in ipairs(lines) do
-                            if l ~= "" and not l:find("^%s*```") then
-                                first = l
-                                break
-                            end
-                        end
-                        -- 只要变量 / 常量 / 属性 / 参数，函数签名之类的不掺和
-                        local kinds =
-                            { "^%(variable%)", "^%(constant%)", "^%(property%)", "^%(parameter%)" }
-                        local ok = false
-                        for _, pattern in ipairs(kinds) do
-                            if first and first:find(pattern) then
-                                ok = true
-                                break
-                            end
-                        end
-                        if ok then
-                            found[idx] = vim.trim(first)
-                        end
-                        break
-                    end
-                end
+    -- q 覆盖 open_floating_preview 自带的 bdelete 映射，顺手把焦点还回去
+    local opts = { buffer = fb, silent = true, nowait = true }
+    map("n", "q", close, opts)
+    map("n", "<Esc>", close, opts)
 
-                pending = pending - 1
-                if pending > 0 then
-                    return
-                end
-
-                vim.schedule(function()
-                    local parts = {}
-                    for idx2 = 1, #names do
-                        if found[idx2] then
-                            parts[#parts + 1] = found[idx2]
-                        end
-                    end
-                    if #parts == 0 then
-                        vim.notify("本行没有拿到变量类型", vim.log.levels.INFO)
-                    else
-                        vim.notify(table.concat(parts, "\n"))
-                    end
-                end)
-            end
-        )
-    end
+    vim.api.nvim_set_current_win(win)
 end
 
 -- ===== 接入缓冲区后的快捷键 =====
@@ -308,7 +163,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
         end
 
         -- 诊断
-        map("n", "<leader>dd", vim.diagnostic.open_float, opts("查看诊断"))
+        map("n", "<leader>dd", diagnostics_float, opts("查看诊断（可进入滚动）"))
         map("n", "[d", function()
             vim.diagnostic.jump({ count = -1 })
         end, opts("上一个诊断"))

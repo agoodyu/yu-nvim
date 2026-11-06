@@ -48,6 +48,11 @@ return {
         -- 每个文件类型都尝试启用 treesitter
         vim.api.nvim_create_autocmd("FileType", {
             callback = function(ev)
+                -- core/autocmds.lua 已经判定是超大文件 / 超长行：不挂语法高亮
+                if vim.b[ev.buf].bigfile then
+                    return
+                end
+
                 -- 没有对应 parser 就直接走普通高亮
                 if not pcall(vim.treesitter.start, ev.buf) then
                     return

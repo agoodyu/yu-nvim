@@ -39,7 +39,7 @@ require("lazy").setup({
         { import = "plugins.lsp" }, -- LSP：服务器、补全、格式化、语法、调试
         { import = "plugins.lang" }, -- 语言：Rust、Cargo
         { import = "plugins.tools" }, -- 工具：翻译
-        { import = "plugins.chineses" }, -- 界面翻译：which-key.lua 的界面翻译
+        { import = "plugins.zh" }, -- 界面中文化：which-key 面板的词表
     },
     checker = { enabled = false }, -- 关闭自动检查更新，避免启动后 fork git 造成 IO 抖动
 })

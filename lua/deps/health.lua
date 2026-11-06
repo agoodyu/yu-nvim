@@ -7,7 +7,7 @@ function M.check()
     vim.health.start("nvim 外部依赖")
 
     local missing = 0
-    for _, d in ipairs(deps) do
+    for _, d in ipairs(deps.list) do
         if vim.fn.executable(d.bin) == 1 then
             vim.health.ok(("%s  →  %s"):format(d.bin, d.pkg))
         else

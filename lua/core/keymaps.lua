@@ -16,6 +16,37 @@ map("i", "jj", "<Esc>", { silent = true, desc = "退出插入模式" })
 map("n", "<Esc>", "<cmd>nohlsearch<cr>", { silent = true, desc = "清除搜索高亮" })
 map("n", "Y", "y$", { silent = true, desc = "复制到行尾" })
 map("n", "<leader>q", "<cmd>q<cr>", { silent = true, desc = "退出当前窗口" })
+-- 键位总览：列出空格开头的所有键
+-- 三个坑叠在一起，缺一个就"闪一下什么都没发生"：
+--   1. 要等这一拍按键处理完（vim.schedule），同步调用会被触发链收尾时关掉
+--   2. 要先把按空格时开着的菜单关掉（state.stop），两套状态叠着会互相顶
+--   3. 插件还没初始化（VeryLazy 之前）时 show() 会静默失败，先拉起来再试
+local function which_key_overview(tries)
+    local ok, cfg = pcall(require, "which-key.config")
+    if ok and cfg.loaded then
+        pcall(function()
+            require("which-key.state").stop()
+        end)
+        pcall(function()
+            require("which-key").show({ keys = "<leader>", mode = "n" })
+        end)
+        return
+    end
+    if tries > 0 then
+        pcall(vim.cmd, "Lazy load which-key")
+        vim.defer_fn(function()
+            which_key_overview(tries - 1)
+        end, 200)
+        return
+    end
+    pcall(vim.cmd, "WhichKey")
+end
+
+map("n", "<leader>?", function()
+    vim.schedule(function()
+        which_key_overview(3)
+    end)
+end, { silent = true, desc = "键位总览（空格开头的键）" })
 
 -- ===== 折叠 =====
 -- 原生 za / zR / zM 加空格前缀，避免和 z 开头的其他命令混淆

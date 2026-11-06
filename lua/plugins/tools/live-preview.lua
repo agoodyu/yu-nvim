@@ -51,10 +51,9 @@ return {
     },
     config = function()
         require("livepreview.config").set({
-            -- 明确指定用内置的 vim.ui.select，不要让它自动挑 snacks.picker
-            -- snacks.picker 一旦被 setup 就会接管 vim.ui.select，
-            -- 之后所有 LSP 的选择菜单（包括代码操作）都变成 snacks 的样式，
-            -- 会出现只有 provider 名字、看不出内容的条目
+            -- 固定用内置 vim.ui.select：以后若再加会接管 vim.ui.select 的
+            -- picker 类插件，LSP 的选择菜单（含代码操作）不会被换成别家样式，
+            -- 那种列表常常只显示 provider 名字，看不出条目内容
             picker = "vim.ui.select",
         })
 

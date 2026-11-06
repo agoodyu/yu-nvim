@@ -1,4 +1,7 @@
+-- ============================================================================
 -- Rust 专用快捷键（只在 rust 缓冲区生效）
+-- 运行 / 测试 / 调试已经挪到 core/run.lua，这里只留 rustaceanvim 独有的操作
+-- ============================================================================
 local buf = vim.api.nvim_get_current_buf()
 local map = vim.keymap.set
 
@@ -16,9 +19,6 @@ map(
     { buffer = buf, silent = true, desc = "悬停操作" }
 )
 
-map("n", "<leader>rr", rust("runnables"), { buffer = buf, silent = true, desc = "运行目标" })
-map("n", "<leader>rt", rust("testables"), { buffer = buf, silent = true, desc = "运行测试" })
-map("n", "<leader>rd", rust("debuggables"), { buffer = buf, silent = true, desc = "调试目标" })
 map(
     "n",
     "<leader>re",
