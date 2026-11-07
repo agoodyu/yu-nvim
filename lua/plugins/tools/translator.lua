@@ -106,15 +106,24 @@ return {
         {
             "<leader>tw",
             function()
+                -- 可视模式下先取消选择，翻译光标下的词（和 tv 的区别就在这）
+                if vim.fn.mode() ~= "n" then
+                    vim.cmd("normal! \27")
+                end
+                -- 不带范围：插件会取光标下的词（expand('<cword>')）
                 run_and_capture("TranslateW")
             end,
+            mode = { "n", "v" },
             desc = "翻译光标下的词",
         },
         {
             "<leader>tv",
             function()
-                vim.cmd("normal! \27") -- 先退出可视模式，保留 '< '> 标记
-                run_and_capture("'<,'>TranslateWV")
+                -- 退出可视模式，'< '> 标记会被写入，命令再按这个范围取选中的文本
+                -- 命令名是 TranslateW（带范围），不是 TranslateWV —— 后者只是 <Plug> 映射，
+                -- 当命令用会报 E492: 不是编辑器的命令
+                vim.cmd("normal! \27")
+                run_and_capture("'<,'>TranslateW")
             end,
             mode = "v",
             desc = "翻译选中文本",
