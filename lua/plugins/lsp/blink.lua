@@ -26,7 +26,17 @@ return {
 
         -- ===== 命令行模式 =====
         cmdline = {
-            keymap = { preset = "cmdline" }, -- 用命令行原生习惯，避免回车被吃掉
+            -- preset = "cmdline" 会整体替换顶层 keymap（<C-j>/<C-k>/<Tab> 全都不在
+            -- preset 里），所以下面显式补齐，和插入模式同一套肌肉记忆：
+            --   <C-j>/<C-k> 移动候选，<Tab> 接受选中项，<S-Tab> 反向
+            -- <CR> 特意不映射，preset 也不碰它 —— 回车始终是"执行搜索"
+            keymap = {
+                preset = "cmdline",
+                ["<C-j>"] = { "select_next", "fallback" },
+                ["<C-k>"] = { "select_prev", "fallback" },
+                ["<Tab>"] = { "accept", "fallback" },
+                ["<S-Tab>"] = { "select_prev", "fallback" },
+            },
             completion = {
                 menu = { auto_show = true }, -- 自动弹候选
                 ghost_text = { enabled = true }, -- 淡色预览，依赖 noice 渲染
